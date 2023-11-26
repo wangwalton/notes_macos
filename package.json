@@ -1,0 +1,35 @@
+{
+  "name": "notes_macos",
+  "version": "1.0.0",
+  "main": "clean_index.js",
+  "license": "MIT",
+  "dependencies": {
+    "active-win": "8.0.0",
+    "applescript": "^1.0.0",
+    "electron-log": "^5.0.1",
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^27.1.0",
+    "electron-builder": "^24.6.4"
+  },
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --mac --x64 --dir",
+    "dist": "electron-builder --mac --x64"
+  },
+  "build": {
+    "extraResources": [
+      "./assets/**"
+    ],
+    "mac": {
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "Please allow access to script browser applications to detect the current URL when triggering instant lookup."
+      }
+    }
+  }
+}
