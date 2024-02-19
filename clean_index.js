@@ -28,7 +28,7 @@ const store = new Store();
 
 log.info("logging all store state: ", store.store);
 if (!app.isPackaged) {
-  console.log("is not packaged");
+  log.info("is not packaged");
   store.set(
     JWT_TOKEN,
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjU2MDRiOTdlOTk5NGRhYmY4Y2FhZTY1In0.U0bUqw6rGoVQ-MPy32uiKJgT2M5G16-fIXe0Ym3Vd7M"
@@ -84,6 +84,7 @@ const createWindow = () => {
 app.whenReady().then(createWindow);
 
 app.on("open-url", (event, url) => {
+  log.info("opening app from chrome, url=", url);
   const params = new URL(url);
   const jwtToken = params.searchParams.get("token");
 
@@ -101,7 +102,7 @@ function buildTray(isSignedIn) {
       : "assets";
 
     tray = new Tray(`${assetsPath}/tray_icon.png`);
-    tray.setTitle("Immersed");
+    // tray.setTitle("Immersed");
   }
 
   const loggedOutMenu = Menu.buildFromTemplate([
@@ -135,18 +136,30 @@ const startPixel = (
   const pollAppItems = async () => {
     if (store.get(JWT_TOKEN)) {
       const appInfo = await activeWindow({
-        // screenRecordingPermission: false,
+        screenRecordingPermission: true,
       });
 
-      // console.log(appInfo);
-      currentData.push({
+      log.info(JSON.stringify(appInfo));
+      const newItem = {
         app_name: appInfo.owner.name,
         window_title: appInfo.title,
         metadata: {
           url: appInfo.url,
         },
         time: new Date().toISOString(),
-      });
+      };
+      const last = currentData[currentData.length - 1];
+
+      if (
+        last &&
+        last.app_name === newItem.app_name &&
+        last.window_title === newItem.window_title &&
+        last.metadata.url === newItem.metadata.url
+      ) {
+        return;
+      }
+
+      currentData.push(newItem);
     }
   };
 
@@ -155,11 +168,9 @@ const startPixel = (
     currentData = [];
 
     if (data.length === 0) {
-      console.log("pixel data empty");
+      log.info("pixel data empty");
       return;
     }
-
-    console.log(`${BACKEND_URL}/screen_time/bulk_create`);
 
     fetch(`${BACKEND_URL}/screen_time/bulk_create`, {
       method: "POST",
@@ -171,12 +182,51 @@ const startPixel = (
     })
       .then((res) => res.text())
       .then((text) => {
-        console.log(text);
+        log.info(text);
       })
       .catch((error) => {
-        console.log(error);
+        log.info(error);
       });
   };
   setInterval(pollAppItems, pollIntervalSeconds);
   setInterval(uploadScreenTime, uploadIntervalSeconds);
+  setInterval(updateTrayIconDuration, 1000 * 30);
+};
+
+const updateTrayIconDuration = async () => {
+  const minutesLeft = await getCurrentWorkSessionTime();
+  if (minutesLeft === null) {
+    tray.setTitle("");
+  } else {
+    tray.setTitle(Math.ceil(minutesLeft).toString());
+  }
+};
+
+const getCurrentWorkSessionTime = async () => {
+  const currentWorkSession = await getCurrentWorkSession();
+  if (currentWorkSession.id === undefined) {
+    return null;
+  }
+  const minutesLeft =
+    (new Date(currentWorkSession.end_time + "Z") - new Date()) / 1000 / 60;
+  console.log(minutesLeft);
+  return minutesLeft;
+};
+
+const getCurrentWorkSession = async () => {
+  return fetch(`${BACKEND_URL}/work_session/current`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: `notlaw_user_jwt=${store.get(JWT_TOKEN)}`,
+    },
+  })
+    .then((res) => res.json())
+    .then((res) => {
+      // log.info(res);
+      return res;
+    })
+    .catch((error) => {
+      log.info(error);
+    });
 };
