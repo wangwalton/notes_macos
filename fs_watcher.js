@@ -14,7 +14,7 @@ const eventMapper = {
 };
 
 console.log("addDir" in Object.keys(eventMapper));
-const watcher = (dir, ignored, api_token) => {
+const watcher = (dir, ignored, api_token_getter) => {
   // One-liner for current directory
   chokidar
     .watch(dir, {
@@ -41,38 +41,41 @@ const watcher = (dir, ignored, api_token) => {
 
       console.log(event, path, stat.size);
       console.log(`${BACKEND_URL}/file_tracker/create`);
-      //   fetch(`${BACKEND_URL}/file_tracker/create`, {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //       Cookie: `notlaw_user_jwt=${api_token}`,
-      //     },
-      //     body: JSON.stringify(payload),
-      //   })
-      //     .then((res) => res.text())
-      //     .then((text) => {
-      //       console.log(text);
-      //     });
+      fetch(`${BACKEND_URL}/file_tracker/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: `notlaw_user_jwt=${api_token_getter()}`,
+        },
+        body: JSON.stringify(payload),
+      })
+        .then((res) => res.text())
+        .then((text) => {
+          // console.log(text);
+        })
+        .catch((error) => {
+          console.log(error);
+        });
     });
 };
 
-const foldersToWatch = ["/Users/yupengwang/dev/waltonwang"];
-foldersToWatch.map((folder) => {
-  // console.log(
-  //   fs.readFileSync(`${folder}/.gitignore`, "utf8").split("\n") + [".git"]
-  // )
-  const ignoredFiles = fs
-    .readFileSync(`${folder}/.gitignore`, "utf8")
-    .split("\n")
-    .concat([".git/**"])
-    .map((f) => `${folder}/${f}`);
-  watcher(
-    folder,
-    // fs.readFileSync(`${folder}/.gitignore`, "utf8").split("\n") + [".git/**"],
-    ignoredFiles,
-    // [folder + "/" + ".git/**"],
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjU2MzA0YzU1YmVlM2U0MDM3MzY4ZmEzIn0.CtMjBHbjg-KrDbOJwRKcyIN5Hz1V9ln7U2dfpoY1lfc"
-  );
-});
+const foldersToWatch = [
+  "/Users/yupengwang/dev/waltonwang",
+  "/Users/yupengwang/dev/waltonwang-ui",
+  "/Users/yupengwang/dev/notes_macos",
+];
+// foldersToWatch.map((folder) => {
+//   const ignoredFiles = fs
+//     .readFileSync(`${folder}/.gitignore`, "utf8")
+//     .split("\n")
+//     .concat([".git/**"])
+//     .map((f) => `${folder}/${f}`);
+//   watcher(
+//     folder,
+//     ignoredFiles,
+//     // [folder + "/" + ".git/**"],
+//     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjU2MzA0YzU1YmVlM2U0MDM3MzY4ZmEzIn0.CtMjBHbjg-KrDbOJwRKcyIN5Hz1V9ln7U2dfpoY1lfc"
+//   );
+// });
 
-// module.exports = watcher;
+module.exports = { watcher };

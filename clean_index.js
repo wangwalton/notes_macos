@@ -11,27 +11,52 @@ const {
 const path = require("node:path");
 const Store = require("electron-store");
 const { BACKEND_URL, FRONTEND_URL } = require("./settings");
-
+const fs = require("fs");
+const { watcher } = require("./fs_watcher");
 const activeWindow = require("active-win");
 
 const log = require("electron-log");
 log.errorHandler.startCatching();
 
 const app_name = "immersed";
-const JWT_TOKEN = "jwtToken";
+const JWT_TOKEN = app.isPackaged ? "jwtToken" : "devJwtToken";
 
 const storeConfig = {};
 if (!app.isPackaged) {
   storeConfig["cwd"] = "dev";
 }
 const store = new Store();
+log.info(("test2");
+
+// TO BE MOVED TO CONFIG
+const DIRECTORIES_TO_WATCH = [
+  "/Users/yupengwang/dev/waltonwang",
+  "/Users/yupengwang/dev/waltonwang-ui",
+  "/Users/yupengwang/dev/notes_macos",
+];
+
+DIRECTORIES_TO_WATCH.map((folder) => {
+  const ignoredFiles = fs
+    .readFileSync(`${folder}/.gitignore`, "utf8")
+    .split("\n")
+    .concat([".git/**"])
+    .map((f) => `${folder}/${f}`);
+  watcher(
+    folder,
+    ignoredFiles,
+    // [folder + "/" + ".git/**"],
+    () => store.get(JWT_TOKEN)
+  );
+});
+
+log.info("test");
 
 log.info("logging all store state: ", store.store);
 if (!app.isPackaged) {
   log.info("is not packaged");
   store.set(
     JWT_TOKEN,
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjU2MDRiOTdlOTk5NGRhYmY4Y2FhZTY1In0.U0bUqw6rGoVQ-MPy32uiKJgT2M5G16-fIXe0Ym3Vd7M"
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjU2MzA0YzU1YmVlM2U0MDM3MzY4ZmEzIn0.CtMjBHbjg-KrDbOJwRKcyIN5Hz1V9ln7U2dfpoY1lfc"
   );
 }
 log.info("ok");
