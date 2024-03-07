@@ -14,8 +14,17 @@ const { BACKEND_URL, FRONTEND_URL } = require("./settings");
 const fs = require("fs");
 const { watcher } = require("./fs_watcher");
 const activeWindow = require("active-win");
-
+const {
+  startPythonSubprocess,
+  pollUntilPythonServerIsUp,
+} = require("./python_server");
+const {
+  IS_CLOUD,
+  USE_BUNDLED_BACKEND,
+  USE_BUNDLED_FRONTEND,
+} = require("./config");
 const log = require("electron-log");
+const { getHeaders } = require("./utils");
 log.errorHandler.startCatching();
 
 const app_name = "immersed";
@@ -26,8 +35,6 @@ if (!app.isPackaged) {
   storeConfig["cwd"] = "dev";
 }
 const store = new Store();
-log.info(("test2");
-
 // TO BE MOVED TO CONFIG
 const DIRECTORIES_TO_WATCH = [
   "/Users/yupengwang/dev/waltonwang",
@@ -35,43 +42,40 @@ const DIRECTORIES_TO_WATCH = [
   "/Users/yupengwang/dev/notes_macos",
 ];
 
-DIRECTORIES_TO_WATCH.map((folder) => {
-  const ignoredFiles = fs
-    .readFileSync(`${folder}/.gitignore`, "utf8")
-    .split("\n")
-    .concat([".git/**"])
-    .map((f) => `${folder}/${f}`);
-  watcher(
-    folder,
-    ignoredFiles,
-    // [folder + "/" + ".git/**"],
-    () => store.get(JWT_TOKEN)
-  );
-});
+// DIRECTORIES_TO_WATCH.map((folder) => {
+//   const ignoredFiles = fs
+//     .readFileSync(`${folder}/.gitignore`, "utf8")
+//     .split("\n")
+//     .concat([".git/**"])
+//     .map((f) => `${folder}/${f}`);
+//   watcher(
+//     folder,
+//     ignoredFiles,
+//     // [folder + "/" + ".git/**"],
+//     () => store.get(JWT_TOKEN)
+//   );
+// });
 
-log.info("test");
-
-log.info("logging all store state: ", store.store);
 if (!app.isPackaged) {
   log.info("is not packaged");
-  store.set(
-    JWT_TOKEN,
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjU2MzA0YzU1YmVlM2U0MDM3MzY4ZmEzIn0.CtMjBHbjg-KrDbOJwRKcyIN5Hz1V9ln7U2dfpoY1lfc"
-  );
+  if (IS_CLOUD) {
+    store.set(
+      JWT_TOKEN,
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxfQ.jYyRJbb0WImFoUUdcslQQfwnXTHJzne-6tsPd8Hrw0I"
+    );
+  }
 }
-log.info("ok");
 const createWindow = () => {
-  // const win = new BrowserWindow({
-  //   webPreferences: {
-  //     preload: path.join(__dirname, "preload.js"),
-  //     nodeIntegration: true,
-  //     // partition: "persist:MyAppSomethingUnique",
-  //   },
-  //   width: 800,
-  //   height: 1500,
-  // });
+  const win = new BrowserWindow({
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: true,
+      // partition: "persist:MyAppSomethingUnique",
+    },
+    width: 800,
+    height: 1500,
+  });
   buildTray(!!store.get(JWT_TOKEN));
-  startPixel();
 
   session.defaultSession.webRequest.onBeforeSendHeaders(
     {
@@ -79,9 +83,12 @@ const createWindow = () => {
     },
     (details, callback) => {
       // Modify request headers here
-      details.requestHeaders["Cookie"] = "";
-      details.requestHeaders.Cookie = `notlaw_user_jwt=${store.get(JWT_TOKEN)}`;
-
+      if (IS_CLOUD) {
+        details.requestHeaders["Cookie"] = "";
+        details.requestHeaders.Cookie = `notlaw_user_jwt=${store.get(
+          JWT_TOKEN
+        )}`;
+      }
       // Call the callback function with the updated headers
       callback({ cancel: false, requestHeaders: details.requestHeaders });
     }
@@ -97,17 +104,57 @@ const createWindow = () => {
     app.setAsDefaultProtocolClient(app_name);
   }
 
-  // win.loadFile("index.html");
   // // Open all new window a href in chrome
   // win.webContents.setWindowOpenHandler(({ url }) => {
   //   shell.openExternal(url);
   //   return { action: "deny" };
   // });
   // win.webContents.openDevTools();
+  return win;
 };
 
-app.whenReady().then(createWindow);
+const loadLoadingSCreen = (win) => {
+  win.webContents.openDevTools();
 
+  if (USE_BUNDLED_FRONTEND) {
+    return;
+  } else {
+    win.loadURL(`${FRONTEND_URL}/persistent_load`);
+  }
+};
+
+const loadContent = (win) => {
+  if (USE_BUNDLED_FRONTEND) {
+    win.loadFile("frontend/index.html", { path: "/" });
+  } else {
+    win.loadURL(`${FRONTEND_URL}/`);
+  }
+};
+
+let pythonPID = null;
+app.whenReady().then(async () => {
+  const win = createWindow();
+  loadLoadingSCreen(win);
+
+  if (USE_BUNDLED_BACKEND) {
+    pythonPID = startPythonSubprocess(
+      app.getPath("userData") + "/python_server.sqlite3"
+    );
+    await pollUntilPythonServerIsUp();
+
+    log.info("successfully started python subprocess, pid=" + pythonPID);
+  }
+  startPixel();
+  loadContent(win);
+});
+
+app.on("quit", function () {
+  if (pythonPID) {
+    pythonPID.kill();
+  }
+});
+
+// Open app from Chrome
 app.on("open-url", (event, url) => {
   log.info("opening app from chrome, url=", url);
   const params = new URL(url);
@@ -130,16 +177,16 @@ function buildTray(isSignedIn) {
     // tray.setTitle("Immersed");
   }
 
-  const loggedOutMenu = Menu.buildFromTemplate([
+  const loggedOutMenu = [
     {
       label: "Sign In",
       click: () => {
         shell.openExternal(`${FRONTEND_URL}/auth/electron`);
       },
     },
-  ]);
+  ];
 
-  const authedMemu = Menu.buildFromTemplate([
+  const authedMemu = [
     {
       label: "Sign Out",
       click: () => {
@@ -147,9 +194,10 @@ function buildTray(isSignedIn) {
         tray.setContextMenu(loggedOutMenu);
       },
     },
-  ]);
+  ];
+  const menu = isSignedIn ? authedMemu : loggedOutMenu;
 
-  const contextMenu = isSignedIn ? authedMemu : loggedOutMenu;
+  const contextMenu = Menu.buildFromTemplate(menu.concat([]));
   tray.setContextMenu(contextMenu);
 }
 
@@ -157,61 +205,69 @@ const startPixel = (
   pollIntervalSeconds = 2 * 1000,
   uploadIntervalSeconds = 10 * 1000
 ) => {
+  log.info("starting all tracking activities...");
   let currentData = [];
   const pollAppItems = async () => {
-    if (store.get(JWT_TOKEN)) {
-      const appInfo = await activeWindow({
-        screenRecordingPermission: true,
-      });
-
-      log.info(JSON.stringify(appInfo));
-      const newItem = {
-        app_name: appInfo.owner.name,
-        window_title: appInfo.title,
-        metadata: {
-          url: appInfo.url,
-        },
-        time: new Date().toISOString(),
-      };
-      const last = currentData[currentData.length - 1];
-
-      if (
-        last &&
-        last.app_name === newItem.app_name &&
-        last.window_title === newItem.window_title &&
-        last.metadata.url === newItem.metadata.url
-      ) {
-        return;
-      }
-
-      currentData.push(newItem);
+    log.debug("polling screen time data...");
+    if (IS_CLOUD && !store.get(JWT_TOKEN)) {
+      log.info("using cloud and no jwt token, skipping...");
+      return;
     }
+    const appInfo = await activeWindow({
+      screenRecordingPermission: true,
+    });
+    if (!("owner" in appInfo)) {
+      log.info("no owner in appInfo, appInfo", appInfo);
+      return;
+    }
+
+    const newItem = {
+      app_name: appInfo.owner.name,
+      window_title: appInfo.title,
+      url: appInfo.url,
+      time: new Date().toISOString(),
+    };
+    const last = currentData[currentData.length - 1];
+
+    if (
+      last &&
+      last.app_name === newItem.app_name &&
+      last.window_title === newItem.window_title &&
+      last.url === newItem.url
+    ) {
+      return;
+    }
+
+    currentData.push(newItem);
   };
 
   const uploadScreenTime = () => {
+    const url = `${BACKEND_URL}/screen_time/bulk_create`;
+    log.info("uploading screen time... url=" + url);
     const data = currentData;
     currentData = [];
 
     if (data.length === 0) {
-      log.info("pixel data empty");
+      log.info("no data to upload, skipping...");
       return;
     }
 
-    fetch(`${BACKEND_URL}/screen_time/bulk_create`, {
+    fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `notlaw_user_jwt=${store.get(JWT_TOKEN)}`,
-      },
+      headers: getHeaders(store.get(JWT_TOKEN)),
       body: JSON.stringify({ app_items: data }),
     })
       .then((res) => res.text())
+      .catch((error) => {
+        log.info(error);
+      })
       .then((text) => {
-        log.info(text);
+        log.info("bulk create response", text);
       })
       .catch((error) => {
         log.info(error);
       });
+    log.info("uploading screen time... done");
   };
   setInterval(pollAppItems, pollIntervalSeconds);
   setInterval(uploadScreenTime, uploadIntervalSeconds);
@@ -233,25 +289,25 @@ const getCurrentWorkSessionTime = async () => {
     return null;
   }
   const minutesLeft =
-    (new Date(currentWorkSession.end_time + "Z") - new Date()) / 1000 / 60;
-  console.log(minutesLeft);
+    (new Date(currentWorkSession.end_time) - new Date()) / 1000 / 60;
   return minutesLeft;
 };
 
 const getCurrentWorkSession = async () => {
+  console.log(`${BACKEND_URL}/work_session/current`);
   return fetch(`${BACKEND_URL}/work_session/current`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: `notlaw_user_jwt=${store.get(JWT_TOKEN)}`,
-    },
+    headers: getHeaders(store.get(JWT_TOKEN)),
   })
     .then((res) => res.json())
     .then((res) => {
-      // log.info(res);
       return res;
     })
     .catch((error) => {
       log.info(error);
     });
 };
+
+app.on("quit", function () {
+  // do some additional cleanup
+});

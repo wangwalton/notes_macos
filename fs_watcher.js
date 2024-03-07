@@ -2,7 +2,7 @@ const chokidar = require("chokidar");
 const { BACKEND_URL, FRONTEND_URL } = require("./settings");
 const fs = require("fs");
 
-const INIT_DURATION = 1000;
+const INIT_DURATION = 5000;
 const FILE_SIZE_LIMIT = 50 * 1024; // Don't track files over 50 kB
 let isInit = true;
 setTimeout(() => (isInit = false), INIT_DURATION);

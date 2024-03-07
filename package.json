@@ -21,7 +21,8 @@
   },
   "build": {
     "extraResources": [
-      "./assets/**"
+      "./frontend/**",
+      "./pythonBackend/**"
     ],
     "npmRebuild": "false",
     "mac": {
