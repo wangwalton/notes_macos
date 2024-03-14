@@ -12,59 +12,37 @@ const path = require("node:path");
 const Store = require("electron-store");
 const { BACKEND_URL, FRONTEND_URL } = require("./settings");
 const fs = require("fs");
-const { watcher } = require("./fs_watcher");
 const activeWindow = require("active-win");
+const { systemPreferences } = require("electron");
+const { api, openSystemPreferences } = require("electron-util");
+const { updateTrayIconDuration } = require("./src/tray");
+const { getNumFiles } = require("./src/utils/filesystem");
+
+const {
+  hasScreenCapturePermission,
+  hasPromptedForPermission,
+} = require("mac-screen-capture-permissions");
+
 const {
   startPythonSubprocess,
   pollUntilPythonServerIsUp,
 } = require("./python_server");
 const {
-  IS_CLOUD,
-  USE_BUNDLED_BACKEND,
-  USE_BUNDLED_FRONTEND,
-} = require("./config");
+  getUserSetting,
+  refreshUserSettings,
+  constants: { IS_CLOUD, USE_BUNDLED_BACKEND, USE_BUNDLED_FRONTEND },
+} = require("./src/user_settings");
+
 const log = require("electron-log");
-const { getHeaders } = require("./utils");
+const { autoUpdater } = require("electron-updater");
+
 log.errorHandler.startCatching();
 
 const app_name = "immersed";
 const JWT_TOKEN = app.isPackaged ? "jwtToken" : "devJwtToken";
 
-const storeConfig = {};
-if (!app.isPackaged) {
-  storeConfig["cwd"] = "dev";
-}
 const store = new Store();
-// TO BE MOVED TO CONFIG
-const DIRECTORIES_TO_WATCH = [
-  "/Users/yupengwang/dev/waltonwang",
-  "/Users/yupengwang/dev/waltonwang-ui",
-  "/Users/yupengwang/dev/notes_macos",
-];
 
-// DIRECTORIES_TO_WATCH.map((folder) => {
-//   const ignoredFiles = fs
-//     .readFileSync(`${folder}/.gitignore`, "utf8")
-//     .split("\n")
-//     .concat([".git/**"])
-//     .map((f) => `${folder}/${f}`);
-//   watcher(
-//     folder,
-//     ignoredFiles,
-//     // [folder + "/" + ".git/**"],
-//     () => store.get(JWT_TOKEN)
-//   );
-// });
-
-if (!app.isPackaged) {
-  log.info("is not packaged");
-  if (IS_CLOUD) {
-    store.set(
-      JWT_TOKEN,
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxfQ.jYyRJbb0WImFoUUdcslQQfwnXTHJzne-6tsPd8Hrw0I"
-    );
-  }
-}
 const createWindow = () => {
   const win = new BrowserWindow({
     webPreferences: {
@@ -72,27 +50,10 @@ const createWindow = () => {
       nodeIntegration: true,
       // partition: "persist:MyAppSomethingUnique",
     },
-    width: 800,
+    width: 800 * 2,
     height: 1500,
   });
   buildTray(!!store.get(JWT_TOKEN));
-
-  session.defaultSession.webRequest.onBeforeSendHeaders(
-    {
-      urls: ["<all_urls>"],
-    },
-    (details, callback) => {
-      // Modify request headers here
-      if (IS_CLOUD) {
-        details.requestHeaders["Cookie"] = "";
-        details.requestHeaders.Cookie = `notlaw_user_jwt=${store.get(
-          JWT_TOKEN
-        )}`;
-      }
-      // Call the callback function with the updated headers
-      callback({ cancel: false, requestHeaders: details.requestHeaders });
-    }
-  );
 
   if (process.defaultApp) {
     if (process.argv.length >= 2) {
@@ -114,21 +75,63 @@ const createWindow = () => {
 };
 
 const loadLoadingSCreen = (win) => {
-  win.webContents.openDevTools();
-
-  if (USE_BUNDLED_FRONTEND) {
+  if (getUserSetting(USE_BUNDLED_FRONTEND)) {
     return;
   } else {
-    win.loadURL(`${FRONTEND_URL}/persistent_load`);
+    win.loadURL(`${FRONTEND_URL}/#/persistent_load`);
   }
 };
 
 const loadContent = (win) => {
-  if (USE_BUNDLED_FRONTEND) {
-    win.loadFile("frontend/index.html", { path: "/" });
+  const hasPrivacy = systemPreferences.isTrustedAccessibilityClient(false);
+  const path = hasPrivacy ? "/electron/work_sessions" : "/electron/initial";
+  if (getUserSetting(USE_BUNDLED_FRONTEND)) {
+    win.loadFile("frontend/index.html", { path });
+    win.webContents.openDevTools();
   } else {
-    win.loadURL(`${FRONTEND_URL}/`);
+    log.info("loading frontend from url");
+    win.loadURL(`${FRONTEND_URL}/#${path}`);
   }
+};
+
+const setupIpc = () => {
+  ipcMain.handle("hasPrivacyPermission", async () => {
+    const res = systemPreferences.isTrustedAccessibilityClient(false);
+    return res;
+  });
+  ipcMain.handle("openPrivacyPermission", async () => {
+    const res = openSystemPreferences("security", "Privacy_Accessibility");
+    log.info(res);
+    return res;
+  });
+  ipcMain.handle("hasInitialScreenCapturePermission", async () => {
+    const res = systemPreferences.getMediaAccessStatus("screen");
+    log.info("screen: " + res);
+    return res === "granted";
+  });
+  ipcMain.handle("hasScreenCapturePermission", async () => {
+    // const res = systemPreferences.getMediaAccessStatus("screen");
+    // log.info("screen: " + res);
+    const appInfo = await activeWindow({
+      screenRecordingPermission: true,
+    });
+    // console.log(appInfo);
+    return appInfo.title !== "";
+  });
+  ipcMain.handle("openScreenCapturePermission", () => {
+    const res = openSystemPreferences("security", "Privacy_ScreenCapture");
+    log.info(res);
+    return res;
+  });
+
+  ipcMain.handle("openChromeSignIn", openChromeSignIn);
+  ipcMain.handle("refreshUserSettings", refreshUserSettings);
+  ipcMain.handle("getNumFiles", (event, ob) => getNumFiles(ob));
+  ipcMain.handle("echo", (event, data) => {
+    console.log(data);
+    throw new Error("echo error");
+    return data;
+  });
 };
 
 let pythonPID = null;
@@ -136,7 +139,8 @@ app.whenReady().then(async () => {
   const win = createWindow();
   loadLoadingSCreen(win);
 
-  if (USE_BUNDLED_BACKEND) {
+  setupIpc();
+  if (getUserSetting(USE_BUNDLED_BACKEND)) {
     pythonPID = startPythonSubprocess(
       app.getPath("userData") + "/python_server.sqlite3"
     );
@@ -144,8 +148,9 @@ app.whenReady().then(async () => {
 
     log.info("successfully started python subprocess, pid=" + pythonPID);
   }
-  startPixel();
   loadContent(win);
+  startPixel();
+  setInterval(() => updateTrayIconDuration(tray), 1000 * 30);
 });
 
 app.on("quit", function () {
@@ -159,12 +164,23 @@ app.on("open-url", (event, url) => {
   log.info("opening app from chrome, url=", url);
   const params = new URL(url);
   const jwtToken = params.searchParams.get("token");
-
-  store.set(JWT_TOKEN, jwtToken);
-  buildTray(true);
-
-  // dialog.showErrorBox("Welcome Back", `You arrived from: ${url}`);
+  fetch(`http://127.0.0.1:5000/user_setting/delta_update`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      cloud_user_token: jwtToken,
+    }),
+  }).then(async (res) => {
+    log.info(await res.text());
+  });
 });
+
+const openChromeSignIn = () => {
+  log.info("opening chrome from auth");
+  shell.openExternal(`${FRONTEND_URL}/auth/electron`);
+};
 
 let tray = null;
 function buildTray(isSignedIn) {
@@ -177,27 +193,7 @@ function buildTray(isSignedIn) {
     // tray.setTitle("Immersed");
   }
 
-  const loggedOutMenu = [
-    {
-      label: "Sign In",
-      click: () => {
-        shell.openExternal(`${FRONTEND_URL}/auth/electron`);
-      },
-    },
-  ];
-
-  const authedMemu = [
-    {
-      label: "Sign Out",
-      click: () => {
-        store.delete(JWT_TOKEN);
-        tray.setContextMenu(loggedOutMenu);
-      },
-    },
-  ];
-  const menu = isSignedIn ? authedMemu : loggedOutMenu;
-
-  const contextMenu = Menu.buildFromTemplate(menu.concat([]));
+  const contextMenu = Menu.buildFromTemplate([]);
   tray.setContextMenu(contextMenu);
 }
 
@@ -205,14 +201,15 @@ const startPixel = (
   pollIntervalSeconds = 2 * 1000,
   uploadIntervalSeconds = 10 * 1000
 ) => {
+  if (!systemPreferences.isTrustedAccessibilityClient(false)) {
+    return false;
+  }
   log.info("starting all tracking activities...");
   let currentData = [];
+
   const pollAppItems = async () => {
     log.debug("polling screen time data...");
-    if (IS_CLOUD && !store.get(JWT_TOKEN)) {
-      log.info("using cloud and no jwt token, skipping...");
-      return;
-    }
+
     const appInfo = await activeWindow({
       screenRecordingPermission: true,
     });
@@ -248,13 +245,13 @@ const startPixel = (
     currentData = [];
 
     if (data.length === 0) {
-      log.info("no data to upload, skipping...");
+      log.debug("no data to upload, skipping...");
       return;
     }
 
     fetch(url, {
       method: "POST",
-      headers: getHeaders(store.get(JWT_TOKEN)),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ app_items: data }),
     })
       .then((res) => res.text())
@@ -267,47 +264,8 @@ const startPixel = (
       .catch((error) => {
         log.info(error);
       });
-    log.info("uploading screen time... done");
+    log.debug("uploading screen time... done");
   };
   setInterval(pollAppItems, pollIntervalSeconds);
   setInterval(uploadScreenTime, uploadIntervalSeconds);
-  setInterval(updateTrayIconDuration, 1000 * 30);
 };
-
-const updateTrayIconDuration = async () => {
-  const minutesLeft = await getCurrentWorkSessionTime();
-  if (minutesLeft === null) {
-    tray.setTitle("");
-  } else {
-    tray.setTitle(Math.ceil(minutesLeft).toString());
-  }
-};
-
-const getCurrentWorkSessionTime = async () => {
-  const currentWorkSession = await getCurrentWorkSession();
-  if (currentWorkSession.id === undefined) {
-    return null;
-  }
-  const minutesLeft =
-    (new Date(currentWorkSession.end_time) - new Date()) / 1000 / 60;
-  return minutesLeft;
-};
-
-const getCurrentWorkSession = async () => {
-  console.log(`${BACKEND_URL}/work_session/current`);
-  return fetch(`${BACKEND_URL}/work_session/current`, {
-    method: "GET",
-    headers: getHeaders(store.get(JWT_TOKEN)),
-  })
-    .then((res) => res.json())
-    .then((res) => {
-      return res;
-    })
-    .catch((error) => {
-      log.info(error);
-    });
-};
-
-app.on("quit", function () {
-  // do some additional cleanup
-});

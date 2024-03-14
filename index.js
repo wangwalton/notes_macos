@@ -83,14 +83,6 @@ function createWindow() {
 
   win.loadURL("https://notes.joystickai.com/");
   win.webContents.openDevTools();
-  // win.on("did-start-navigation", function () {
-  //   console.log("start");
-  //   session.defaultSession.cookies.flushStore();
-  // });
-
-  // const contents = win.webContents;
-  // console.log(contents);
-  // setInterval(logCookies, 2000);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     console.log(url);
