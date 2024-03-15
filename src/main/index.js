@@ -28,7 +28,11 @@ const {
     pollUntilPythonServerIsUp, isPythonServerUp,
 } = require("../utils/python_server");
 const log = require("electron-log");
-const {autoUpdater} = require("electron-updater");
+
+const {autoUpdater} = require("electron-updater")
+autoUpdater.checkForUpdatesAndNotify()
+autoUpdater.logger = log
+
 
 log.errorHandler.startCatching();
 
@@ -64,7 +68,6 @@ const createWindow = () => {
     //   shell.openExternal(url);
     //   return { action: "deny" };
     // });
-    // win.webContents.openDevTools();
     return win;
 };
 
@@ -89,9 +92,9 @@ const loadContent = (win) => {
             path.join(process.resourcesPath, "frontend/index.html")
             : "frontend/index.html"
         win.loadFile(file, {search: urlPath});
-        win.webContents.openDevTools();
     } else {
         log.info("loading frontend from url");
+        win.webContents.openDevTools();
         win.loadURL(`${FRONTEND_URL}/#${urlPath}`);
     }
 };
@@ -232,7 +235,7 @@ const startPixel = (
         const appInfo = await activeWindow({
             screenRecordingPermission: true,
         });
-        if (!("owner" in appInfo)) {
+        if ((!appInfo) || !("owner" in appInfo)) {
             log.info("no owner in appInfo, appInfo", appInfo);
             return;
         }

@@ -910,7 +910,7 @@ electron-store@^8.1.0:
 
 electron-updater@^6.1.8:
   version "6.1.8"
-  resolved "https://registry.npmmirror.com/electron-updater/-/electron-updater-6.1.8.tgz#17637bca165322f4e526b13c99165f43e6f697d8"
+  resolved "https://registry.yarnpkg.com/electron-updater/-/electron-updater-6.1.8.tgz#17637bca165322f4e526b13c99165f43e6f697d8"
   integrity sha512-hhOTfaFAd6wRHAfUaBhnAOYc+ymSGCWJLtFkw4xJqOvtpHmIdNHnXDV9m1MHC+A6q08Abx4Ykgyz/R5DGKNAMQ==
   dependencies:
     builder-util-runtime "9.2.3"

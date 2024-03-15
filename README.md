@@ -1,7 +1,7 @@
-
 ## Code backups
 
 Cookie handling
+
 ```
   session.defaultSession.webRequest.onBeforeSendHeaders(
     {
@@ -22,6 +22,7 @@ Cookie handling
 ```
 
 Tray Building
+
 ```
   const loggedOutMenu = [
     {
@@ -43,6 +44,7 @@ Tray Building
 ```
 
 Watch Directories
+
 ```
 // DIRECTORIES_TO_WATCH.map((folder) => {
 //   const ignoredFiles = fs
@@ -57,4 +59,13 @@ Watch Directories
 //     () => store.get(JWT_TOKEN)
 //   );
 // });
+```
+
+## Release Example
+
+```
+yarn distp
+https://github.com/wangwalton/notes_macos/releases/
+publish
+https://github.com/wangwalton/notes_macos/releases/latest/download/Productivity-1.0.2.dmg
 ```

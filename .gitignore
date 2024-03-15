@@ -4,3 +4,5 @@ node_modules/**
 frontend/**
 pythonBackend/**
 *.log
+
+.DS_Store
