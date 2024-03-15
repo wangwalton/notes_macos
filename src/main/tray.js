@@ -1,7 +1,9 @@
-const { fetchGetFn } = require("./utils/requests");
+const { fetchGetFn } = require("../utils/requests");
+const log = require("electron-log");
 
 const updateTrayIconDuration = async (tray) => {
   const minutesLeft = await getCurrentWorkSessionTime();
+  log.debug(`got ${minutesLeft} minutes left in the current work session`);
   if (minutesLeft === null) {
     tray.setTitle("");
   } else {

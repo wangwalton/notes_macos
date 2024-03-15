@@ -1,6 +1,6 @@
 dist/**
 node_modules/**
 
-frontend/
-pythonBackend/
-yarn-error.log
+frontend/**
+pythonBackend/**
+*.log

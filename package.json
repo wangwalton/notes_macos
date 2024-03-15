@@ -1,7 +1,7 @@
 {
   "name": "notes_macos",
   "version": "1.0.0",
-  "main": "clean_index.js",
+  "main": "./src/main/index.js",
   "license": "MIT",
   "dependencies": {
     "active-win": "8.0.0",
@@ -18,12 +18,14 @@
   },
   "scripts": {
     "start": "electron .",
-    "pack": "electron-builder --mac --x64 --dir",
-    "dist": "USE_DEV_URLS=true electron-builder --mac --x64"
+    "pack": "electron-builder --mac --x64 --dir --publish never",
+    "dist": "electron-builder --mac --x64"
   },
   "build": {
     "extraResources": [
-      "./assets/"
+      "./assets/",
+      "./pythonBackend/",
+      "./frontend/"
     ],
     "npmRebuild": "false",
     "mac": {
