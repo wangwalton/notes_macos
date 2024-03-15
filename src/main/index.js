@@ -10,7 +10,13 @@ const {
 } = require("electron");
 const path = require("node:path");
 const Store = require("electron-store");
-const {BACKEND_URL, FRONTEND_URL, START_PYTHON_SERVER_OVERRIDE, START_LOCAL_HTML_OVERRIDE} = require("./settings");
+const {
+    BACKEND_URL,
+    FRONTEND_URL,
+    START_PYTHON_SERVER_OVERRIDE,
+    START_LOCAL_HTML_OVERRIDE,
+    BACKEND_LOCAL_URL
+} = require("./settings");
 const fs = require("fs");
 const activeWindow = require("active-win");
 const {systemPreferences} = require("electron");
@@ -79,7 +85,7 @@ const loadLoadingScreen = (win) => {
             : "frontend/index.html"
         return win.loadFile(file, {search: urlPath});
     } else {
-        win.loadURL(`${FRONTEND_URL}/#${urlPath}`);
+        win.loadURL(`http://localhost:5173/#${urlPath}`);
     }
 };
 
@@ -95,7 +101,7 @@ const loadContent = (win) => {
     } else {
         log.info("loading frontend from url");
         win.webContents.openDevTools();
-        win.loadURL(`${FRONTEND_URL}/#${urlPath}`);
+        win.loadURL(`http://localhost:5173/#${urlPath}`);
     }
 };
 
@@ -261,7 +267,7 @@ const startPixel = (
     };
 
     const uploadScreenTime = () => {
-        const url = `${BACKEND_URL}/screen_time/bulk_create`;
+        const url = `${BACKEND_LOCAL_URL}/screen_time/bulk_create`;
         log.info("uploading screen time... url=" + url);
         const data = currentData;
         currentData = [];
