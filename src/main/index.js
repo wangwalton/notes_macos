@@ -35,9 +35,11 @@ const {
 } = require("../utils/python_server");
 const log = require("electron-log");
 
+log.info("about to import electron updater")
 const {autoUpdater} = require("electron-updater")
-autoUpdater.checkForUpdatesAndNotify()
 autoUpdater.logger = log
+autoUpdater.checkForUpdatesAndNotify()
+log.info("checked for updates")
 
 
 log.errorHandler.startCatching();
