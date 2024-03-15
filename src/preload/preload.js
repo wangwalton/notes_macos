@@ -17,12 +17,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
     openChromeSignIn: () => {
         ipcRenderer.invoke("openChromeSignIn");
-    },
+    },¡
     refreshUserSettings: () => {
         ipcRenderer.invoke("refreshUserSettings");
     },
     getNumFiles: async (data) => await ipcRenderer.invoke("getNumFiles", data),
     watchFileChanges: () => ipcRenderer.invoke("watchFileChanges"),
+    trackScreenTime: () => ipcRenderer.invoke("trackScreenTime"),
     echo: async (data) => {
         const res = await ipcRenderer.invoke("echo", data);
         return res;

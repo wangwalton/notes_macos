@@ -1,6 +1,6 @@
 {
   "name": "notes_macos",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "main": "./src/main/index.js",
   "license": "MIT",
   "dependencies": {
@@ -17,7 +17,7 @@
     "electron-builder": "^24.6.4"
   },
   "scripts": {
-    "start": "electron .",
+    "start": "electron .",¡
     "pack": "electron-builder --mac --x64 --dir --publish never",
     "dist": "electron-builder --mac --x64",
     "distp": "electron-builder --mac --x64 --publish always"

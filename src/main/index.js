@@ -8,6 +8,11 @@ const {
     Menu,
     dialog,
 } = require("electron");
+const log = require("electron-log");
+if (!app.isPackaged) {
+    log.transports.file.level = false;
+}
+
 const path = require("node:path");
 const Store = require("electron-store");
 const {
@@ -33,14 +38,14 @@ const {
     startPythonSubprocess,
     pollUntilPythonServerIsUp, isPythonServerUp,
 } = require("../utils/python_server");
-const log = require("electron-log");
 
 log.info("about to import electron updater")
 const {autoUpdater} = require("electron-updater")
 autoUpdater.logger = log
 autoUpdater.checkForUpdatesAndNotify()
 log.info("checked for updates")
-
+log.info("checked for updates2")
+log.info("checked for updates3")
 
 log.errorHandler.startCatching();
 
@@ -85,21 +90,20 @@ const loadLoadingScreen = (win) => {
         const file = app.isPackaged ?
             path.join(process.resourcesPath, "frontend/index.html")
             : "frontend/index.html"
-        return win.loadFile(file, {search: urlPath});
+        return win.loadFile(file,);
     } else {
         win.loadURL(`http://localhost:5173/#${urlPath}`);
     }
 };
 
-const loadContent = (win) => {
-    const hasPrivacy = systemPreferences.isTrustedAccessibilityClient(false);
-    const urlPath = hasPrivacy ? "/electron/work_sessions" : "/electron/initial";
+const loadContent = async (win, hasAccess) => {
+    const urlPath = hasAccess ? "/electron/work_sessions" : "/electron/initial";
 
     if (START_LOCAL_HTML_OVERRIDE || app.isPackaged) {
         const file = app.isPackaged ?
             path.join(process.resourcesPath, "frontend/index.html")
             : "frontend/index.html"
-        win.loadFile(file, {search: urlPath});
+        win.loadFile(file, {hash: urlPath});
     } else {
         log.info("loading frontend from url");
         win.webContents.openDevTools();
@@ -107,12 +111,20 @@ const loadContent = (win) => {
     }
 };
 
+const hasInitialScreenCapturePermission = async () => {
+    const res = systemPreferences.getMediaAccessStatus("screen");
+    log.info(`checking inital screen capture flag ${res}`);
+    return res === "granted";
+}
+
+const hasInitialPrivacyPermission = async () => {
+    const res = systemPreferences.isTrustedAccessibilityClient(false);
+    log.info(`checking initial accessibility flag: ${res}`)
+    return res;
+}
+
 const setupIpc = () => {
-    ipcMain.handle("hasInitialPrivacyPermission", async () => {
-        const res = systemPreferences.isTrustedAccessibilityClient(false);
-        log.info(`checking initial accessibility flag: ${res}`)
-        return res;
-    });
+    ipcMain.handle("hasInitialPrivacyPermission", hasInitialPrivacyPermission);
     ipcMain.handle("hasPrivacyPermission", async () => {
         const appInfo = await activeWindow({
             screenRecordingPermission: false,
@@ -124,11 +136,7 @@ const setupIpc = () => {
         // log.info(res);
         return res;
     });
-    ipcMain.handle("hasInitialScreenCapturePermission", async () => {
-        const res = systemPreferences.getMediaAccessStatus("screen");
-        log.info(`checking inital screen capture flag ${res}`);
-        return res === "granted";
-    });
+    ipcMain.handle("hasInitialScreenCapturePermission", hasInitialScreenCapturePermission);
     ipcMain.handle("hasScreenCapturePermission", async () => {
 
         const appInfo = await activeWindow({
@@ -150,6 +158,7 @@ const setupIpc = () => {
         watchAllDirectories(getUserSettings()?.file_watcher_settings || [])
 
     })
+    ipcMain.handle("trackScreenTime", () => startPixel())
 
     ipcMain.handle("echo", (event, data) => {
         return data;
@@ -160,7 +169,12 @@ const setupIpc = () => {
 let pythonPID = null;
 app.whenReady().then(async () => {
     const win = createWindow();
-    loadLoadingScreen(win);
+    if (!app.isPackaged) {
+        log.info("opendevtools")
+        win.webContents.openDevTools();
+    }
+
+    // loadLoadingScreen(win);
 
     setupIpc();
     // If server is already running, we'll use that one.
@@ -175,9 +189,11 @@ app.whenReady().then(async () => {
     }
     await initUserSettings();
 
-
-    loadContent(win);
-    startPixel();
+    const hasAccess = await hasInitialPrivacyPermission() && await hasInitialScreenCapturePermission()
+    loadContent(win, hasAccess);
+    if (hasAccess) {
+        startPixel();
+    }
     watchAllDirectories(getUserSettings()?.file_watcher_settings || [])
     setInterval(() => updateTrayIconDuration(tray), 1000 * 10);
 });
@@ -231,9 +247,6 @@ const startPixel = (
     pollIntervalSeconds = 2 * 1000,
     uploadIntervalSeconds = 10 * 1000
 ) => {
-    if (!systemPreferences.isTrustedAccessibilityClient(false)) {
-        return false;
-    }
     log.info("starting screen time tracking");
     let currentData = [];
 

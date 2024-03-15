@@ -12,7 +12,7 @@ if (process.env.USE_DEV_URLS === "true") {
 }
 
 const START_PYTHON_SERVER_OVERRIDE = null;
-const START_LOCAL_HTML_OVERRIDE = null;
+const START_LOCAL_HTML_OVERRIDE = true;
 
 module.exports = {
     BACKEND_LOCAL_URL,

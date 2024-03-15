@@ -3,6 +3,10 @@ const {BACKEND_URL, BACKEND_LOCAL_URL} = require("../main/settings");
 const {app} = require("electron");
 const path = require("node:path");
 const log_ = log.create({logId: "pythonServer"});
+log_.transports.file.resolvePathFn = () => path.join(app.getPath('logs'), 'python.log');
+if (!app.isPackaged) {
+    log_.transports.file.level = false;
+}
 
 const startPythonSubprocess = (db_path, isPackaged) => {
     log_.log("starting python subprocess, db_path=" + db_path);
