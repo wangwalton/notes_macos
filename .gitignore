@@ -6,3 +6,4 @@ pythonBackend/**
 *.log
 
 .DS_Store
+.idea/*
