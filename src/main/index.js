@@ -44,8 +44,8 @@ const {autoUpdater} = require("electron-updater")
 autoUpdater.logger = log
 autoUpdater.checkForUpdatesAndNotify()
 log.info("checked for updates")
-log.info("checked for updates2")
-log.info("checked for updates3")
+// log.info("checked for updates2")
+// log.info("checked for updates3")
 
 log.errorHandler.startCatching();
 
@@ -97,13 +97,14 @@ const loadLoadingScreen = (win) => {
 };
 
 const loadContent = async (win, hasAccess) => {
-    const urlPath = hasAccess ? "/electron/work_sessions" : "/electron/initial";
+    const urlPath = hasAccess ? "/" : "/";
 
     if (START_LOCAL_HTML_OVERRIDE || app.isPackaged) {
         const file = app.isPackaged ?
             path.join(process.resourcesPath, "frontend/index.html")
             : "frontend/index.html"
-        win.loadFile(file, {hash: urlPath});
+        log.info(`loading ${urlPath}`)
+        win.loadFile(file,);
     } else {
         log.info("loading frontend from url");
         win.webContents.openDevTools();
@@ -187,7 +188,7 @@ app.whenReady().then(async () => {
 
         log.info("successfully started python subprocess, pid=" + pythonPID);
     }
-    await initUserSettings();
+    // await initUserSettings();
 
     const hasAccess = await hasInitialPrivacyPermission() && await hasInitialScreenCapturePermission()
     loadContent(win, hasAccess);
@@ -224,7 +225,7 @@ app.on("open-url", (event, url) => {
 
 const openChromeSignIn = () => {
     log.info("opening chrome from auth");
-    shell.openExternal(`${FRONTEND_URL}/auth/electron`);
+    shell.openExternal(`${FRONTEND_URL}/electron/auth`);
 };
 
 let tray = null;

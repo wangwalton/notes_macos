@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
     openChromeSignIn: () => {
         ipcRenderer.invoke("openChromeSignIn");
-    },¡
+    },
     refreshUserSettings: () => {
         ipcRenderer.invoke("refreshUserSettings");
     },
