@@ -1,5 +1,5 @@
 const log = require("electron-log");
-const {BACKEND_URL, BACKEND_LOCAL_URL} = require("../main/settings");
+const {BACKEND_URL} = require("../main/settings");
 const {app} = require("electron");
 const path = require("node:path");
 const log_ = log.create({logId: "pythonServer"});
@@ -11,7 +11,7 @@ if (!app.isPackaged) {
 const startPythonSubprocess = (db_path, isPackaged) => {
     log_.log("starting python subprocess, db_path=" + db_path);
     const script = isPackaged
-        ? path.join(process.resourcesPath, `./pythonBackend/app`)
+        ? path.join(process.resourcesPath, `./pythonBackend/app/app`)
         : `./pythonBackend/app`;
 
     const child = require("child_process").spawn(script, ["--dbpath", db_path]);
@@ -44,7 +44,7 @@ const pollUntilPythonServerIsUp = async () => {
 };
 const isPythonServerUp = async () => {
     try {
-        const resp = await fetch(`${BACKEND_LOCAL_URL}/`);
+        const resp = await fetch(`${BACKEND_URL}/`);
         return true;
     } catch (error) {
         return false;

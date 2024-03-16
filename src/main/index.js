@@ -17,10 +17,10 @@ const path = require("node:path");
 const Store = require("electron-store");
 const {
     BACKEND_URL,
-    FRONTEND_URL,
+    REMOTE_FRONTEND_URL,
+    LOCAL_FRONTEND_URL,
     START_PYTHON_SERVER_OVERRIDE,
-    START_LOCAL_HTML_OVERRIDE,
-    BACKEND_LOCAL_URL
+    START_LOCAL_HTML_OVERRIDE
 } = require("./settings");
 const fs = require("fs");
 const activeWindow = require("active-win");
@@ -40,12 +40,12 @@ const {
 } = require("../utils/python_server");
 
 log.info("about to import electron updater")
-const {autoUpdater} = require("electron-updater")
-autoUpdater.logger = log
-autoUpdater.checkForUpdatesAndNotify()
-log.info("checked for updates")
-// log.info("checked for updates2")
-// log.info("checked for updates3")
+if (app.isPackaged) {
+    const {autoUpdater} = require("electron-updater")
+    autoUpdater.logger = log
+    autoUpdater.checkForUpdatesAndNotify()
+}
+
 
 log.errorHandler.startCatching();
 
@@ -92,23 +92,23 @@ const loadLoadingScreen = (win) => {
             : "frontend/index.html"
         return win.loadFile(file,);
     } else {
-        win.loadURL(`http://localhost:5173/#${urlPath}`);
+        win.loadURL(`${LOCAL_FRONTEND_URL}/#${urlPath}`);
     }
 };
 
 const loadContent = async (win, hasAccess) => {
-    const urlPath = hasAccess ? "/" : "/";
+    const urlPath = hasAccess ? "/electron/work_session" : "/electron/initial";
 
     if (START_LOCAL_HTML_OVERRIDE || app.isPackaged) {
         const file = app.isPackaged ?
             path.join(process.resourcesPath, "frontend/index.html")
             : "frontend/index.html"
         log.info(`loading ${urlPath}`)
-        win.loadFile(file,);
+        win.loadFile(file, {hash: urlPath});
     } else {
         log.info("loading frontend from url");
         win.webContents.openDevTools();
-        win.loadURL(`http://localhost:5173/#${urlPath}`);
+        win.loadURL(`${LOCAL_FRONTEND_URL}/#${urlPath}`);
     }
 };
 
@@ -191,6 +191,7 @@ app.whenReady().then(async () => {
     // await initUserSettings();
 
     const hasAccess = await hasInitialPrivacyPermission() && await hasInitialScreenCapturePermission()
+    log.info(`hasAccess=${hasAccess}`)
     loadContent(win, hasAccess);
     if (hasAccess) {
         startPixel();
@@ -225,7 +226,7 @@ app.on("open-url", (event, url) => {
 
 const openChromeSignIn = () => {
     log.info("opening chrome from auth");
-    shell.openExternal(`${FRONTEND_URL}/electron/auth`);
+    shell.openExternal(`${REMOTE_FRONTEND_URL}/electron/auth`);
 };
 
 let tray = null;
@@ -283,7 +284,7 @@ const startPixel = (
     };
 
     const uploadScreenTime = () => {
-        const url = `${BACKEND_LOCAL_URL}/screen_time/bulk_create`;
+        const url = `${BACKEND_URL}/screen_time/bulk_create`;
         log.info("uploading screen time... url=" + url);
         const data = currentData;
         currentData = [];

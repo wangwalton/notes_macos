@@ -1,6 +1,6 @@
 {
   "name": "notes_macos",
-  "version": "1.0.10",
+  "version": "1.0.13",
   "main": "./src/main/index.js",
   "license": "MIT",
   "dependencies": {
@@ -17,10 +17,10 @@
     "electron-builder": "^24.6.4"
   },
   "scripts": {
-    "start": "electron .",
+    "start": "USE_DEV_URLS=true electron .",
     "pack": "electron-builder --mac --x64 --dir --publish never",
-    "dist": "electron-builder --mac --x64",
-    "distp": "electron-builder --mac --x64 --publish always"
+    "dist": "electron-builder --mac dir --x64",
+    "release": "electron-builder --mac --x64 --publish always"
   },
   "build": {
     "appId": "com.joystickai.Notes",
@@ -41,6 +41,7 @@
     "npmRebuild": "false",
     "mac": {
       "target": [
+        "zip",
         "dmg"
       ],
       "publish": [

@@ -1,23 +1,21 @@
-let BACKEND_URL = "https://notesapi.joystickai.com";
-let FRONTEND_URL = "https://notes.joystickai.com";
+let REMOTE_FRONTEND_URL = "https://notes.joystickai.com";
+let LOCAL_FRONTEND_URL = "http://localhost:5173"
+// using 127.0.0.1 for backend because node 18 onwards doesn't allow localhost
+let BACKEND_URL = "http://127.0.0.1:41852"
 
 
-const BACKEND_LOCAL_URL = "http://127.0.0.1:5001"
-
+// When running yarn start, we will use the local port, not the packaged port
 if (process.env.USE_DEV_URLS === "true") {
-    // using 127.0.0.1 for backend because node 18 onwards doesn't allow localhost
-    BACKEND_URL = BACKEND_LOCAL_URL;
-    FRONTEND_URL = "http://localhost:5173";
-    console.log("dev_urls");
+    BACKEND_URL = "http://127.0.0.1:19989"
 }
 
 const START_PYTHON_SERVER_OVERRIDE = null;
-const START_LOCAL_HTML_OVERRIDE = true;
+const START_LOCAL_HTML_OVERRIDE = null;
 
 module.exports = {
-    BACKEND_LOCAL_URL,
     BACKEND_URL,
-    FRONTEND_URL,
+    REMOTE_FRONTEND_URL,
+    LOCAL_FRONTEND_URL,
     START_PYTHON_SERVER_OVERRIDE,
     START_LOCAL_HTML_OVERRIDE
 };

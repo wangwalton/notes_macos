@@ -72,7 +72,7 @@ const getNumFiles = (
 const watcher = (
     ob,
     file_size_limit = 50 * 1024,
-    startupDuration = 5001,
+    startupDuration = 5000,
     updateDurationLimit = 2 * 60
 ) => {
     const eventMapper = {

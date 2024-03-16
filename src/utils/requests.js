@@ -1,22 +1,32 @@
 const log = require("electron-log");
+const {BACKEND_URL} = require("../main/settings");
 
 const fetchGetFn = async (path, data = {}) => {
-  const resp = await fetch(
-    `http://127.0.0.1:5001${path}?` + +new URLSearchParams(data),
-    {
-      method: "GET",
+    const url = `${BACKEND_URL}${path}?` + new URLSearchParams(data);
+
+    try {
+        const resp = await fetch(
+            url,
+            {
+                method: "GET",
+            }
+        );
+        return await resp.json()
+    } catch (e) {
+
+        log.error(url, e)
+        debugger;
+        throw e
     }
-  );
-  return await resp.json()
 };
 
 const fetchPostFn = async (path, data) => {
-  const resp = await fetch(`http://127.0.0.1:5001${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return await resp.json()
+    const resp = await fetch(`${BACKEND_URL}${path}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data),
+    });
+    return await resp.json()
 };
 
-module.exports = { fetchGetFn, fetchPostFn };
+module.exports = {fetchGetFn, fetchPostFn};
