@@ -9,8 +9,8 @@ if (process.env.USE_DEV_URLS === "true") {
     BACKEND_URL = "http://127.0.0.1:19989"
 }
 
-const START_PYTHON_SERVER_OVERRIDE = null;
-const START_LOCAL_HTML_OVERRIDE = null;
+const START_PYTHON_SERVER_OVERRIDE = true;
+const START_LOCAL_HTML_OVERRIDE = true;
 
 module.exports = {
     BACKEND_URL,
@@ -19,3 +19,5 @@ module.exports = {
     START_PYTHON_SERVER_OVERRIDE,
     START_LOCAL_HTML_OVERRIDE
 };
+
+

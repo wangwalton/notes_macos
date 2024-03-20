@@ -11,19 +11,19 @@ if (!app.isPackaged) {
 const startPythonSubprocess = (db_path, isPackaged) => {
     log_.log("starting python subprocess, db_path=" + db_path);
     const script = isPackaged
-        ? path.join(process.resourcesPath, `./pythonBackend/app/app`)
+        ? path.join(process.resourcesPath, `./pythonBackend/app`)
         : `./pythonBackend/app`;
 
     const child = require("child_process").spawn(script, ["--dbpath", db_path]);
 
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", function (data) {
-        log_.log("stdout: " + data);
+        log_.log(data + "\r");
     });
 
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", function (data) {
-        log_.log("stdout: " + data);
+        log_.log(data + "\r");
     });
 
     return child;

@@ -1,6 +1,6 @@
 {
   "name": "notes_macos",
-  "version": "1.0.14",
+  "version": "1.0.19",
   "main": "./src/main/index.js",
   "license": "MIT",
   "dependencies": {
@@ -10,7 +10,8 @@
     "electron-log": "^5.0.1",
     "electron-store": "^8.1.0",
     "electron-updater": "^6.1.8",
-    "mac-screen-capture-permissions": "^2.1.0"
+    "mac-screen-capture-permissions": "^2.1.0",
+    "yarn": "^1.22.22"
   },
   "devDependencies": {
     "electron": "^27.1.0",
@@ -19,13 +20,15 @@
   "scripts": {
     "start": "USE_DEV_URLS=true electron .",
     "pack": "electron-builder --mac --x64 --dir --publish never",
-    "dist": "electron-builder --mac dir --x64",
+    "testBuild": "DEBUG=electron-builder,electron-osx-sign* electron-builder --mac dir --x64",
+    "dist": "AUTO_UPDATE=false CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --x64",
     "release": "electron-builder --mac --x64 --publish always"
   },
   "build": {
     "appId": "com.joystickai.Notes",
     "productName": "Productivity",
     "artifactName": "${productName}.${ext}",
+    "electronLanguages": "en",
     "publish": [
       {
         "provider": "github",
@@ -55,5 +58,6 @@
         "NSAppleEventsUsageDescription": "Please allow access to script browser applications to detect the current URL when triggering instant lookup."
       }
     }
-  }
+  },
+  "packageManager": "yarn@4.1.1"
 }

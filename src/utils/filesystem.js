@@ -129,6 +129,8 @@ const watchAllDirectories = () => {
     let currentlyWatching = [];
 
     return (obs) => {
+        log.info(`watching all directories, objects: ${obs}`)
+
         currentlyWatching.forEach((w) => w.close())
         currentlyWatching = obs.map(ob => watcher(ob));
     }

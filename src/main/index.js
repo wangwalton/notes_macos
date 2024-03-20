@@ -39,14 +39,14 @@ const {
     pollUntilPythonServerIsUp, isPythonServerUp,
 } = require("../utils/python_server");
 
-log.info("about to import electron updater")
-if (app.isPackaged) {
+if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
+    log.info("about to import electron updater")
     const {autoUpdater} = require("electron-updater")
     autoUpdater.logger = log
     autoUpdater.checkForUpdatesAndNotify()
 }
 
-
+log.info("starting app");
 log.errorHandler.startCatching();
 
 const app_name = "immersed";
@@ -97,7 +97,7 @@ const loadLoadingScreen = (win) => {
 };
 
 const loadContent = async (win, hasAccess) => {
-    const urlPath = hasAccess ? "/electron/work_session" : "/electron/initial";
+    const urlPath = hasAccess ? "/electron/work_sessions" : "/electron/initial";
 
     if (START_LOCAL_HTML_OVERRIDE || app.isPackaged) {
         const file = app.isPackaged ?
@@ -188,15 +188,16 @@ app.whenReady().then(async () => {
 
         log.info("successfully started python subprocess, pid=" + pythonPID);
     }
-    // await initUserSettings();
-
+    await initUserSettings();
     const hasAccess = await hasInitialPrivacyPermission() && await hasInitialScreenCapturePermission()
     log.info(`hasAccess=${hasAccess}`)
     loadContent(win, hasAccess);
     if (hasAccess) {
         startPixel();
     }
-    watchAllDirectories(getUserSettings()?.file_watcher_settings || [])
+    const userSettings = getUserSettings()?.file_watcher_settings
+    log.info("userSettings", {userSettings})
+    watchAllDirectories(userSettings || [])
     setInterval(() => updateTrayIconDuration(tray), 1000 * 10);
 });
 
@@ -211,7 +212,7 @@ app.on("open-url", (event, url) => {
     log.info("opening app from chrome, url=", url);
     const params = new URL(url);
     const jwtToken = params.searchParams.get("token");
-    fetch(`http://127.0.0.1:5001/user_setting/delta_update`, {
+    fetch(`${BACKEND_URL}/user_setting/delta_update`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
