@@ -105,6 +105,8 @@ const watcher = (
         )
             return;
 
+        if (isInit) return;
+
         fileLastWatched[path] = new Date();
 
         const eventType = isInit ? "S" : eventMapper[event];

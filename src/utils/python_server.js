@@ -1,18 +1,59 @@
 const log = require("electron-log");
-const {BACKEND_URL} = require("../main/settings");
+const {LOCAL_BACKEND_URL, LOCAL_BACKEND_PORT} = require("../main/settings");
 const {app} = require("electron");
 const path = require("node:path");
+const {exec} = require('child_process');
+
 const log_ = log.create({logId: "pythonServer"});
 log_.transports.file.resolvePathFn = () => path.join(app.getPath('logs'), 'python.log');
 if (!app.isPackaged) {
     log_.transports.file.level = false;
 }
 
-const startPythonSubprocess = (db_path, isPackaged) => {
+// Function to execute a shell command and return a promise
+const execPromise = (cmd) => new Promise((resolve, reject) => {
+    exec(cmd, (error, stdout, stderr) => {
+        if (error) {
+            reject(error);
+            return;
+        }
+        if (stderr) {
+            reject(stderr);
+            return;
+        }
+        resolve(stdout.trim());
+    });
+});
+
+// Main function to find and kill processes
+const killProcessesOnPort = async (port) => {
+    try {
+        log_.info("Looking for processes on port " + port + " to kill...");
+        const findProcessCmd = `lsof -i tcp:${port} | awk 'NR!=1 {print $2}' | uniq`;
+        const pids = await execPromise(findProcessCmd);
+        log_.info(`Found ${pids.length} following processes on port ${port}: ${pids}`);
+
+        const killPromises = pids.split('\n').map(pid => {
+            if (!pid || isNaN(pid)) return Promise.resolve();
+            const killCmd = `kill -9 ${pid}`;
+            return execPromise(killCmd).then(() => console.log(`Process ${pid} killed successfully.`));
+        });
+
+        await Promise.all(killPromises);
+
+        log_.info('All processes have been killed.');
+    } catch (err) {
+        log_.error(`Error: ${err}`);
+    }
+};
+
+const startPythonSubprocess = async (db_path, isPackaged) => {
     log_.log("starting python subprocess, db_path=" + db_path);
     const script = isPackaged
         ? path.join(process.resourcesPath, `./pythonBackend/app`)
         : `./pythonBackend/app`;
+
+    await killProcessesOnPort(LOCAL_BACKEND_PORT)
 
     const child = require("child_process").spawn(script, ["--dbpath", db_path]);
 
@@ -44,7 +85,7 @@ const pollUntilPythonServerIsUp = async () => {
 };
 const isPythonServerUp = async () => {
     try {
-        const resp = await fetch(`${BACKEND_URL}/`);
+        const resp = await fetch(`${LOCAL_BACKEND_URL}/`);
         return true;
     } catch (error) {
         return false;

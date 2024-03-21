@@ -1,8 +1,8 @@
 const log = require("electron-log");
-const {BACKEND_URL} = require("../main/settings");
+const {LOCAL_BACKEND_URL} = require("../main/settings");
 
 const fetchGetFn = async (path, data = {}) => {
-    const url = `${BACKEND_URL}${path}?` + new URLSearchParams(data);
+    const url = `${LOCAL_BACKEND_URL}${path}?` + new URLSearchParams(data);
 
     try {
         const resp = await fetch(
@@ -21,7 +21,7 @@ const fetchGetFn = async (path, data = {}) => {
 };
 
 const fetchPostFn = async (path, data) => {
-    const resp = await fetch(`${BACKEND_URL}${path}`, {
+    const resp = await fetch(`${LOCAL_BACKEND_URL}${path}`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(data),

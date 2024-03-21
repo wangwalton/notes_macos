@@ -18,7 +18,8 @@
     "electron-builder": "^24.6.4"
   },
   "scripts": {
-    "start": "USE_DEV_URLS=true electron .",
+    "start": "ENV=LOCAL electron .",
+    "startBare": "ALLOW_FILE_SAVE=false ALLOW_SCREEN_TIME=false ENV=LOCAL electron .",
     "pack": "electron-builder --mac --x64 --dir --publish never",
     "testBuild": "DEBUG=electron-builder,electron-osx-sign* electron-builder --mac dir --x64",
     "dist": "AUTO_UPDATE=false CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --x64",

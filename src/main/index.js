@@ -16,11 +16,9 @@ if (!app.isPackaged) {
 const path = require("node:path");
 const Store = require("electron-store");
 const {
-    BACKEND_URL,
-    REMOTE_FRONTEND_URL,
-    LOCAL_FRONTEND_URL,
+    LOCAL_BACKEND_URL,
     START_PYTHON_SERVER_OVERRIDE,
-    START_LOCAL_HTML_OVERRIDE
+    START_LOCAL_HTML_OVERRIDE, FRONTEND_URL, ALLOW_SCREEN_TIME, ALLOW_FILE_SAVE
 } = require("./settings");
 const fs = require("fs");
 const activeWindow = require("active-win");
@@ -92,7 +90,7 @@ const loadLoadingScreen = (win) => {
             : "frontend/index.html"
         return win.loadFile(file,);
     } else {
-        win.loadURL(`${LOCAL_FRONTEND_URL}/#${urlPath}`);
+        win.loadURL(`${FRONTEND_URL}/#${urlPath}`);
     }
 };
 
@@ -108,7 +106,7 @@ const loadContent = async (win, hasAccess) => {
     } else {
         log.info("loading frontend from url");
         win.webContents.openDevTools();
-        win.loadURL(`${LOCAL_FRONTEND_URL}/#${urlPath}`);
+        win.loadURL(`${FRONTEND_URL}/#${urlPath}`);
     }
 };
 
@@ -180,7 +178,7 @@ app.whenReady().then(async () => {
     setupIpc();
     // If server is already running, we'll use that one.
     if (START_PYTHON_SERVER_OVERRIDE || app.isPackaged) {
-        pythonPID = startPythonSubprocess(
+        pythonPID = await startPythonSubprocess(
             app.getPath("userData") + "/python_server.sqlite3",
             app.isPackaged
         );
@@ -192,12 +190,13 @@ app.whenReady().then(async () => {
     const hasAccess = await hasInitialPrivacyPermission() && await hasInitialScreenCapturePermission()
     log.info(`hasAccess=${hasAccess}`)
     loadContent(win, hasAccess);
-    if (hasAccess) {
+    if (hasAccess && ALLOW_SCREEN_TIME) {
         startPixel();
     }
     const userSettings = getUserSettings()?.file_watcher_settings
     log.info("userSettings", {userSettings})
-    watchAllDirectories(userSettings || [])
+
+    if (ALLOW_FILE_SAVE) watchAllDirectories(userSettings || [])
     setInterval(() => updateTrayIconDuration(tray), 1000 * 10);
 });
 
@@ -212,7 +211,7 @@ app.on("open-url", (event, url) => {
     log.info("opening app from chrome, url=", url);
     const params = new URL(url);
     const jwtToken = params.searchParams.get("token");
-    fetch(`${BACKEND_URL}/user_setting/delta_update`, {
+    fetch(`${LOCAL_BACKEND_URL}/user_setting/delta_update`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -227,7 +226,7 @@ app.on("open-url", (event, url) => {
 
 const openChromeSignIn = () => {
     log.info("opening chrome from auth");
-    shell.openExternal(`${REMOTE_FRONTEND_URL}/electron/auth`);
+    shell.openExternal(`${FRONTEND_URL}/electron/auth`);
 };
 
 let tray = null;
@@ -285,7 +284,7 @@ const startPixel = (
     };
 
     const uploadScreenTime = () => {
-        const url = `${BACKEND_URL}/screen_time/bulk_create`;
+        const url = `${LOCAL_BACKEND_URL}/screen_time/bulk_create`;
         log.info("uploading screen time... url=" + url);
         const data = currentData;
         currentData = [];

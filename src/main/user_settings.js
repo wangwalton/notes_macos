@@ -1,5 +1,5 @@
 const log = require("electron-log");
-const {BACKEND_URL} = require("./settings");
+const {LOCAL_BACKEND_URL} = require("./settings");
 
 const IS_CLOUD = "IS_CLOUD";
 const USE_BUNDLED_FRONTEND = "USE_BUNDLED_FRONTEND";
@@ -27,7 +27,7 @@ const userSettings = () => {
 
 const _getUserSettings = async () => {
     log.debug("fetching latest user settings...");
-    const res = await fetch(`${BACKEND_URL}/user_setting/get`, {
+    const res = await fetch(`${LOCAL_BACKEND_URL}/user_setting/get`, {
         method: "GET",
     });
     if (!res.ok) {
