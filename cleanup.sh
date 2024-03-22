@@ -1,0 +1,12 @@
+rm -rf ./pythonBackend/app/_internal/django/contrib/auth/locale
+rm -rf ./pythonBackend/app/_internal/django/contrib/admin/locale
+rm -rf ./pythonBackend/app/_internal/django/contrib/admindocs/
+rm -rf ./pythonBackend/app/_internal/django/contrib/gis/locale/
+rm -rf ./pythonBackend/app/_internal/django/contrib/contenttypes/locale/
+rm -rf ./pythonBackend/app/_internal/django/contrib/humanize/locale/
+rm -rf ./pythonBackend/app/_internal/django/contrib/postgres/locale/
+rm -rf ./pythonBackend/app/_internal/django/contrib/sites/locale/
+rm -rf ./pythonBackend/app/_internal/django/contrib/flatpages/locale/
+rm -rf ./pythonBackend/app/_internal/django/contrib/sessions/locale/
+rm -rf ./pythonBackend/app/_internal/django/contrib/redirects/locale/
+rm -rf ./pythonBackend/app/_internal/django/conf/locale/

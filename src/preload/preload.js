@@ -24,10 +24,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     getNumFiles: async (data) => await ipcRenderer.invoke("getNumFiles", data),
     watchFileChanges: () => ipcRenderer.invoke("watchFileChanges"),
     trackScreenTime: () => ipcRenderer.invoke("trackScreenTime"),
+    openUrlInBrowser: (data) => ipcRenderer.invoke("openUrlInBrowser", data),
     echo: async (data) => {
         const res = await ipcRenderer.invoke("echo", data);
         return res;
     },
+
 });
 
 

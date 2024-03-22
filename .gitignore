@@ -7,3 +7,5 @@ pythonBackend/**
 
 .DS_Store
 .idea/*
+
+*.txt

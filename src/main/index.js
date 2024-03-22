@@ -36,6 +36,7 @@ const {
     startPythonSubprocess,
     pollUntilPythonServerIsUp, isPythonServerUp,
 } = require("../utils/python_server");
+const {startPythonTrigger} = require("../utils/python_trigger");
 
 if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
     log.info("about to import electron updater")
@@ -158,6 +159,10 @@ const setupIpc = () => {
 
     })
     ipcMain.handle("trackScreenTime", () => startPixel())
+    ipcMain.handle("openUrlInBrowser", (event, data) => {
+        log.info("opening chrome from auth");
+        shell.openExternal(data);
+    });
 
     ipcMain.handle("echo", (event, data) => {
         return data;
@@ -198,6 +203,7 @@ app.whenReady().then(async () => {
 
     if (ALLOW_FILE_SAVE) watchAllDirectories(userSettings || [])
     setInterval(() => updateTrayIconDuration(tray), 1000 * 10);
+    startPythonTrigger(freq = 30 * 1000);
 });
 
 app.on("quit", function () {
