@@ -4,6 +4,7 @@ const {
     ipcMain,
     session,
     shell,
+    Notification,
     Tray,
     Menu,
     dialog,
@@ -37,6 +38,8 @@ const {
     pollUntilPythonServerIsUp, isPythonServerUp,
 } = require("../utils/python_server");
 const {startPythonTrigger} = require("../utils/python_trigger");
+const {notify} = require("./notif");
+const {trackScreenTime} = require("../utils/screen_time");
 
 if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
     log.info("about to import electron updater")
@@ -155,10 +158,10 @@ const setupIpc = () => {
     ipcMain.handle("getNumFiles", (event, ob) => getNumFiles(ob));
     ipcMain.handle("watchFileChanges", async () => {
         await refetchUserSettings()
-        watchAllDirectories(getUserSettings()?.file_watcher_settings || [])
+        watchAllDirectories(getUserSettings()?.settings.file_watcher_settings || [])
 
     })
-    ipcMain.handle("trackScreenTime", () => startPixel())
+    ipcMain.handle("trackScreenTime", () => trackScreenTime.start())
     ipcMain.handle("openUrlInBrowser", (event, data) => {
         log.info("opening chrome from auth");
         shell.openExternal(data);
@@ -196,14 +199,14 @@ app.whenReady().then(async () => {
     log.info(`hasAccess=${hasAccess}`)
     loadContent(win, hasAccess);
     if (hasAccess && ALLOW_SCREEN_TIME) {
-        startPixel();
+        trackScreenTime.start()
     }
-    const userSettings = getUserSettings()?.file_watcher_settings
+    const userSettings = getUserSettings()?.settings.file_watcher_settings
     log.info("userSettings", {userSettings})
 
     if (ALLOW_FILE_SAVE) watchAllDirectories(userSettings || [])
     setInterval(() => updateTrayIconDuration(tray), 1000 * 10);
-    startPythonTrigger(freq = 30 * 1000);
+    startPythonTrigger();
 });
 
 app.on("quit", function () {
@@ -251,73 +254,4 @@ function buildTray(isSignedIn) {
     tray.setContextMenu(contextMenu);
 }
 
-const startPixel = (
-    pollIntervalSeconds = 2 * 1000,
-    uploadIntervalSeconds = 10 * 1000
-) => {
-    log.info("starting screen time tracking");
-    let currentData = [];
-
-    const pollAppItems = async () => {
-        log.debug("polling screen time data...");
-
-        const appInfo = await activeWindow({
-            screenRecordingPermission: true,
-        });
-        if ((!appInfo) || !("owner" in appInfo)) {
-            log.info("no owner in appInfo, appInfo", appInfo);
-            return;
-        }
-
-        const newItem = {
-            app_name: appInfo.owner.name,
-            window_title: appInfo.title,
-            url: appInfo.url,
-            time: new Date().toISOString(),
-        };
-        const last = currentData[currentData.length - 1];
-
-        if (
-            last &&
-            last.app_name === newItem.app_name &&
-            last.window_title === newItem.window_title &&
-            last.url === newItem.url
-        ) {
-            return;
-        }
-
-        currentData.push(newItem);
-    };
-
-    const uploadScreenTime = () => {
-        const url = `${LOCAL_BACKEND_URL}/screen_time/bulk_create`;
-        log.info("uploading screen time... url=" + url);
-        const data = currentData;
-        currentData = [];
-
-        if (data.length === 0) {
-            log.debug("no data to upload, skipping...");
-            return;
-        }
-
-        fetch(url, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({app_items: data}),
-        })
-            .then((res) => res.text())
-            .catch((error) => {
-                log.info(error);
-            })
-            .then((text) => {
-                log.info("bulk create response", text);
-            })
-            .catch((error) => {
-                log.info(error);
-            });
-        log.debug("uploading screen time... done");
-    };
-    setInterval(pollAppItems, pollIntervalSeconds);
-    setInterval(uploadScreenTime, uploadIntervalSeconds);
-};
 app.disableHardwareAcceleration();

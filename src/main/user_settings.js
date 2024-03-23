@@ -27,7 +27,7 @@ const userSettings = () => {
 
 const _getUserSettings = async () => {
     log.debug("fetching latest user settings...");
-    const res = await fetch(`${LOCAL_BACKEND_URL}/user_setting/get`, {
+    const res = await fetch(`${LOCAL_BACKEND_URL}/user_setting/get_all`, {
         method: "GET",
     });
     if (!res.ok) {

@@ -4,8 +4,6 @@ backend:
 frontend:
 	cd ../waltonwang-ui && yarn buildc
 
-# release: backend frontend
-
 pack: backend frontend
 	npm run pack
 
