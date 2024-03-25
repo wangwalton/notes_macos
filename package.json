@@ -1,6 +1,6 @@
 {
   "name": "notes_macos",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "main": "./src/main/index.js",
   "license": "MIT",
   "dependencies": {
