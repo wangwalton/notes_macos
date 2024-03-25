@@ -1,3 +1,4 @@
+console.log("ok")
 const {
     app,
     BrowserWindow,
@@ -46,6 +47,21 @@ if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
     const {autoUpdater} = require("electron-updater")
     autoUpdater.logger = log
     autoUpdater.checkForUpdatesAndNotify()
+
+    autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
+        const dialogOpts = {
+            type: 'info',
+            buttons: ['Restart', 'Later'],
+            title: 'Application Update',
+            message: process.platform === 'win32' ? releaseNotes : releaseName,
+            detail:
+                'A new version has been downloaded. Restart the application to apply the updates.'
+        }
+
+        dialog.showMessageBox(dialogOpts).then((returnValue) => {
+            if (returnValue.response === 0) autoUpdater.quitAndInstall()
+        })
+    })
 }
 
 log.info("starting app");
@@ -205,7 +221,7 @@ app.whenReady().then(async () => {
     log.info("userSettings", {userSettings})
 
     if (ALLOW_FILE_SAVE) watchAllDirectories(userSettings || [])
-    setInterval(() => updateTrayIconDuration(tray), 1000 * 10);
+    setInterval(() => updateTrayIconDuration(app, tray), 1000 * 10);
     startPythonTrigger();
 });
 

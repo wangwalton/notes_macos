@@ -35,6 +35,7 @@ const wrapper = (notificationCooloff = 3 * 60 * 1000) => {
         log.info("No active work sessions and found appName=", appName, "getWorkingApps=", getWorkingApps())
         if (getWorkingApps().includes(appName)) {
             if (new Date() - lastNotified > notificationCooloff) {
+                log.info("user might be working, notifiying...")
                 notify(appName);
                 lastNotified = new Date();
             }
@@ -46,5 +47,12 @@ const wrapper = (notificationCooloff = 3 * 60 * 1000) => {
     };
 }
 
+const notifyWorkSessionComplete = () => {
+    const notif = new Notification({
+        title: "Work session complete",
+        body: `You've completed a work session!`
+    })
+    notif.show()
+}
 
-module.exports = {notifier: wrapper(), notify}
+module.exports = {notifier: wrapper(), notify, notifyWorkSessionComplete}

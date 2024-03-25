@@ -1,16 +1,26 @@
 const {fetchGetFn} = require("../utils/requests");
 const log = require("electron-log");
-const {checkIfShouldCreateWorkSessionAndNotify, notifier} = require("./notif");
+const {checkIfShouldCreateWorkSessionAndNotify, notifier, notifyWorkSessionComplete} = require("./notif");
 
-const updateTrayIconDuration = async (tray) => {
+let ongoing = false;
+
+const updateTrayIconDuration = async (app, tray) => {
     const minutesLeft = await getCurrentWorkSessionTime();
     log.debug(`got ${minutesLeft} minutes left in the current work session`);
     if (minutesLeft === null) {
         tray.setTitle("");
-        notifier.checkAndNotify();
+        if (app.isPackaged) {
+            notifier.checkAndNotify();
+        }
     } else {
         tray.setTitle(Math.ceil(minutesLeft).toString());
     }
+
+    if (ongoing && minutesLeft === null) {
+        log.info("work session complete, sending notification")
+        notifyWorkSessionComplete();
+    }
+    ongoing = (minutesLeft !== null);
 };
 
 const getCurrentWorkSessionTime = async () => {
