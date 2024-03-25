@@ -7,6 +7,6 @@ frontend:
 pack: backend frontend
 	npm run pack
 
-release:  backend frontend
-	git stash && npm version patch && git stash pop
-	npm run release
+# release:  backend frontend
+# 	git stash && npm version patch && git stash pop
+# 	npm run release

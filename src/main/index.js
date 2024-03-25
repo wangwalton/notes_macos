@@ -20,19 +20,14 @@ const Store = require("electron-store");
 const {
     LOCAL_BACKEND_URL,
     START_PYTHON_SERVER_OVERRIDE,
-    START_LOCAL_HTML_OVERRIDE, FRONTEND_URL, ALLOW_SCREEN_TIME, ALLOW_FILE_SAVE
+    START_LOCAL_HTML_OVERRIDE, FRONTEND_URL, ALLOW_SCREEN_TIME, ALLOW_FILE_SAVE, ALLOW_KEYBOARD_LISTENER
 } = require("./settings");
 const fs = require("fs");
 const activeWindow = require("active-win");
 const {systemPreferences} = require("electron");
-const {api, openSystemPreferences} = require("electron-util");
 const {updateTrayIconDuration} = require("./tray");
 const {getNumFiles, watchAllDirectories} = require("../utils/filesystem");
 const {userSettings: {initUserSettings, getUserSettings, refetchUserSettings}} = require("./user_settings")
-const {
-    hasScreenCapturePermission,
-    hasPromptedForPermission,
-} = require("mac-screen-capture-permissions");
 
 const {
     startPythonSubprocess,
@@ -41,12 +36,26 @@ const {
 const {startPythonTrigger} = require("../utils/python_trigger");
 const {notify} = require("./notif");
 const {trackScreenTime} = require("../utils/screen_time");
+const {autoUpdater} = require("electron-updater");
+const {keyboardListener} = require("../keyboard/keyboard");
+
 
 if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
+
+
     log.info("about to import electron updater")
     const {autoUpdater} = require("electron-updater")
     autoUpdater.logger = log
-    autoUpdater.checkForUpdatesAndNotify()
+
+    const updateHandler = () => {
+        autoUpdater.checkForUpdates().then((res) => {
+            log.info("checked for updates", res)
+        })
+
+    }
+    updateHandler()
+
+    setInterval(updateHandler, 5 * 60 * 1000)
 
     autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
         const dialogOpts = {
@@ -151,11 +160,6 @@ const setupIpc = () => {
         });
         return appInfo.window !== "";
     });
-    ipcMain.handle("openPrivacyPermission", async () => {
-        const res = openSystemPreferences("security", "Privacy_Accessibility");
-        // log.info(res);
-        return res;
-    });
     ipcMain.handle("hasInitialScreenCapturePermission", hasInitialScreenCapturePermission);
     ipcMain.handle("hasScreenCapturePermission", async () => {
 
@@ -164,12 +168,6 @@ const setupIpc = () => {
         });
         return appInfo.title !== "";
     });
-    ipcMain.handle("openScreenCapturePermission", () => {
-        const res = openSystemPreferences("security", "Privacy_ScreenCapture");
-        // log.info(res);
-        return res;
-    });
-
     ipcMain.handle("openChromeSignIn", openChromeSignIn);
     ipcMain.handle("refreshUserSettings", refetchUserSettings);
     ipcMain.handle("getNumFiles", (event, ob) => getNumFiles(ob));
@@ -224,12 +222,18 @@ app.whenReady().then(async () => {
     if (ALLOW_FILE_SAVE) watchAllDirectories(userSettings || [])
     setInterval(() => updateTrayIconDuration(app, tray), 1000 * 10);
     startPythonTrigger();
+    if (ALLOW_KEYBOARD_LISTENER) {
+        keyboardListener.start()
+    }
 });
 
 app.on("quit", function () {
     if (pythonPID) {
+        log.info("killing python server");
         pythonPID.kill();
     }
+    log.info("killing keyboard listener server");
+    keyboardListener.stop()
 });
 
 // Open app from Chrome

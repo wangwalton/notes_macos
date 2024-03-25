@@ -11,8 +11,6 @@ const trackScreenTime = (
     let lastAvailable = null;
 
     const pollAppItems = async () => {
-        log.debug("polling screen time data...");
-
         const appInfo = await activeWindow({
             screenRecordingPermission: true,
         });

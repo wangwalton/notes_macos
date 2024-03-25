@@ -5,16 +5,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     hasInitialPrivacyPermission: () =>
         ipcRenderer.invoke("hasInitialPrivacyPermission"),
     hasPrivacyPermission: () => ipcRenderer.invoke("hasPrivacyPermission"),
-    openPrivacyPermission: () => {
-        ipcRenderer.invoke("openPrivacyPermission");
-    },
     hasInitialScreenCapturePermission: () =>
         ipcRenderer.invoke("hasInitialScreenCapturePermission"),
     hasScreenCapturePermission: () =>
         ipcRenderer.invoke("hasScreenCapturePermission"),
-    openScreenCapturePermission: () => {
-        ipcRenderer.invoke("openScreenCapturePermission");
-    },
     openChromeSignIn: () => {
         ipcRenderer.invoke("openChromeSignIn");
     },

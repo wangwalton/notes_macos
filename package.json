@@ -1,6 +1,6 @@
 {
   "name": "notes_macos",
-  "version": "1.0.25",
+  "version": "1.0.28",
   "main": "./src/main/index.js",
   "license": "MIT",
   "dependencies": {
@@ -10,8 +10,7 @@
     "electron-log": "^5.0.1",
     "electron-store": "^8.1.0",
     "electron-updater": "^6.1.8",
-    "mac-screen-capture-permissions": "^2.1.0",
-    "yarn": "^1.22.22"
+    "node-global-key-listener": "0.1.1"
   },
   "devDependencies": {
     "electron": "^27.1.0",
@@ -59,6 +58,5 @@
         "NSAppleEventsUsageDescription": "Please allow access to script browser applications to detect the current URL when triggering instant lookup."
       }
     }
-  },
-  "packageManager": "yarn@4.1.1"
+  }
 }

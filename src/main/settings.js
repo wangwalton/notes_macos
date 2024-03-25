@@ -24,6 +24,7 @@ const getEnvVarBool = (name, default_val) => {
 
 const ALLOW_SCREEN_TIME = getEnvVarBool("ALLOW_SCREEN_TIME", "true")
 const ALLOW_FILE_SAVE = getEnvVarBool("ALLOW_FILE_SAVE", "true");
+const ALLOW_KEYBOARD_LISTENER = getEnvVarBool("ALLOW_KEYBOARD_LISTENER", "true");
 
 
 module.exports = {
@@ -31,6 +32,7 @@ module.exports = {
     LOCAL_BACKEND_URL,
     ALLOW_SCREEN_TIME,
     ALLOW_FILE_SAVE,
+    ALLOW_KEYBOARD_LISTENER,
     REMOTE_BACKEND_URL,
     FRONTEND_URL,
     START_PYTHON_SERVER_OVERRIDE,
