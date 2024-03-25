@@ -5,7 +5,9 @@ const {trackScreenTime} = require("../utils/screen_time");
 const log = require("electron-log");
 
 const getWorkingApps = () => {
-    return getUserSettings()?.notif_settings.applications_for_create_ws
+    const apps = getUserSettings()?.notif_settings.applications_for_create_ws
+    const dontCount = ["Google Chrome", "Safari"]
+    return apps.filter(app => !dontCount.includes(apps))
 }
 
 const createWorkSession = async (app_name, duration) => {

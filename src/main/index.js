@@ -72,6 +72,7 @@ const JWT_TOKEN = app.isPackaged ? "jwtToken" : "devJwtToken";
 
 const store = new Store();
 
+log.info("haha")
 const createWindow = () => {
     const win = new BrowserWindow({
         webPreferences: {
