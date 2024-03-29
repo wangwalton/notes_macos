@@ -1,4 +1,3 @@
-console.log("ok")
 const {
     app,
     BrowserWindow,
@@ -34,10 +33,11 @@ const {
     pollUntilPythonServerIsUp, isPythonServerUp,
 } = require("../utils/python_server");
 const {startPythonTrigger} = require("../utils/python_trigger");
-const {notify} = require("./notif");
+const {notify, notifier} = require("./notif");
 const {trackScreenTime} = require("../utils/screen_time");
 const {autoUpdater} = require("electron-updater");
 const {keyboardListener} = require("../keyboard/keyboard");
+var kill = require('tree-kill');
 
 
 if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
@@ -196,19 +196,21 @@ app.whenReady().then(async () => {
         win.webContents.openDevTools();
     }
 
+
     // loadLoadingScreen(win);
 
     setupIpc();
     // If server is already running, we'll use that one.
-    if (START_PYTHON_SERVER_OVERRIDE || app.isPackaged) {
-        pythonPID = await startPythonSubprocess(
-            app.getPath("userData") + "/python_server.sqlite3",
-            app.isPackaged
-        );
-        await pollUntilPythonServerIsUp();
+    // if (START_PYTHON_SERVER_OVERRIDE || app.isPackaged) {
+    pythonPID = await startPythonSubprocess(
+        app.getPath("userData") + "/python_server.sqlite3",
+        app.getPath("logs") + "/python_server.log",
+        app.isPackaged
+    );
+    await pollUntilPythonServerIsUp();
 
-        log.info("successfully started python subprocess, pid=" + pythonPID);
-    }
+    log.info("successfully started python subprocess, pid=" + pythonPID.pid);
+    // }
     await initUserSettings();
     const hasAccess = await hasInitialPrivacyPermission() && await hasInitialScreenCapturePermission()
     log.info(`hasAccess=${hasAccess}`)
@@ -222,20 +224,37 @@ app.whenReady().then(async () => {
     if (ALLOW_FILE_SAVE) watchAllDirectories(userSettings || [])
     setInterval(() => updateTrayIconDuration(app, tray), 1000 * 10);
     startPythonTrigger();
-    if (ALLOW_KEYBOARD_LISTENER) {
-        keyboardListener.start()
-    }
+    // if (ALLOW_KEYBOARD_LISTENER) {
+    //     keyboardListener.start()
+    // }
 });
 
-app.on("quit", function () {
+app.on('window-all-closed', () => {
+    app.quit()
+})
+
+app.on("quit", async () => {
     if (pythonPID) {
-        log.info("killing python server");
-        pythonPID.kill();
+        log.info("killing python server", pythonPID.pid);
+        log.info("awaiting killing process tree")
+        const pythonKiller = killProcessTree(pythonPID.pid)
+        await pythonKiller;
+        log.info("killed")
+
     }
     log.info("killing keyboard listener server");
     keyboardListener.stop()
 });
 
+const killProcessTree = pid => new Promise((resolve, reject) => {
+    kill(pid, 'SIGKILL', (err) => {
+        if (err) {
+            reject(err);
+        } else {
+            resolve();
+        }
+    });
+});
 // Open app from Chrome
 app.on("open-url", (event, url) => {
     log.info("opening app from chrome, url=", url);
@@ -276,3 +295,4 @@ function buildTray(isSignedIn) {
 }
 
 app.disableHardwareAcceleration();
+app.setLoginItemSettings({openAtLogin: true})

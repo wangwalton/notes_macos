@@ -7,7 +7,7 @@ const log = require("electron-log");
 const getWorkingApps = () => {
     const apps = getUserSettings()?.notif_settings.applications_for_create_ws
     const dontCount = ["Google Chrome", "Safari"]
-    return apps.filter(app => !dontCount.includes(apps))
+    return apps.filter(app => !dontCount.includes(app))
 }
 
 const createWorkSession = async (app_name, duration) => {
@@ -30,11 +30,11 @@ const notify = (app_name) => {
 const wrapper = (notificationCooloff = 3 * 60 * 1000) => {
     // init to some time before
     let lastNotified = new Date() - 1000 * 60 * 60 * 24;
-    const checkAndNotify = () => {
 
+    const checkAndNotify = () => {
         const screenTime = trackScreenTime.getLastAvailable()
         const appName = screenTime.app_name;
-        log.info("No active work sessions and found appName=", appName, "getWorkingApps=", getWorkingApps())
+        // log.info("No active work sessions and found appName=", appName, "getWorkingApps=", getWorkingApps())
         if (getWorkingApps().includes(appName)) {
             if (new Date() - lastNotified > notificationCooloff) {
                 log.info("user might be working, notifiying...")

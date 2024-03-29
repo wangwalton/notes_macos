@@ -31,7 +31,7 @@ const killProcessesOnPort = async (port) => {
         log_.info("Looking for processes on port " + port + " to kill...");
         const findProcessCmd = `lsof -i tcp:${port} | awk 'NR!=1 {print $2}' | uniq`;
         const pids = await execPromise(findProcessCmd);
-        log_.info(`Found ${pids.length} following processes on port ${port}: ${pids}`);
+        log_.info(`Found following processes on port ${port}: ${pids}`);
 
         const killPromises = pids.split('\n').map(pid => {
             if (!pid || isNaN(pid)) return Promise.resolve();
@@ -47,15 +47,14 @@ const killProcessesOnPort = async (port) => {
     }
 };
 
-const startPythonSubprocess = async (db_path, isPackaged) => {
-    log_.log("starting python subprocess, db_path=" + db_path);
+const startPythonSubprocess = async (db_path, log_path, isPackaged) => {
+    await killProcessesOnPort(LOCAL_BACKEND_PORT)
     const script = isPackaged
         ? path.join(process.resourcesPath, `./pythonBackend/app`)
         : `./pythonBackend/app`;
-
-    await killProcessesOnPort(LOCAL_BACKEND_PORT)
-
-    const child = require("child_process").spawn(script, ["--dbpath", db_path]);
+    const args = ["--dbpath", db_path, "--logpath", log_path]
+    log_.log("starting python subprocess, args=" + JSON.stringify(args));
+    const child = require("child_process").execFile(script, ["--dbpath", db_path, "--logpath", log_path]);
 
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", function (data) {

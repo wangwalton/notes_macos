@@ -10,7 +10,8 @@
     "electron-log": "^5.0.1",
     "electron-store": "^8.1.0",
     "electron-updater": "^6.1.8",
-    "node-global-key-listener": "0.1.1"
+    "node-global-key-listener": "0.1.1",
+    "tree-kill": "^1.2.2"
   },
   "devDependencies": {
     "electron": "^27.1.0",
@@ -19,7 +20,7 @@
   "scripts": {
     "start": "ENV=LOCAL electron .",
     "startBare": "ALLOW_FILE_SAVE=false ALLOW_SCREEN_TIME=false ENV=LOCAL electron .",
-    "pack": "DEBUG=electron-builder,electron-osx-sign* electron-builder --mac dir --x64 --publish never",
+    "pak": "DEBUG=electron-builder,electron-osx-sign* electron-builder --mac dir --x64 --publish never",
     "dist": "AUTO_UPDATE=false CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --x64",
     "release": "electron-builder --mac --x64 --publish always"
   },

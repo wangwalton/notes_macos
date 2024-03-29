@@ -1,11 +1,15 @@
-backend:
+backendTarget:
+	echo "backend"
 	cd ../waltonwang && ./install_python_app.sh
 
-frontend:
+frontendTarget:
+	echo "frontend"
 	cd ../waltonwang-ui && yarn buildc
 
-pack: backend frontend
-	npm run pack
+pack: frontendTarget backendTarget
+	echo "pack"
+	yarn pak
+	open dist
 
 # release:  backend frontend
 # 	git stash && npm version patch && git stash pop
