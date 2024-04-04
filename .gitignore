@@ -9,3 +9,6 @@ pythonBackend/**
 .idea/*
 
 *.txt
+
+build/**
+!build/entitlements.mac.plist

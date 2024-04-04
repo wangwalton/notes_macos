@@ -1,5 +1,6 @@
 const {fetchPostFn, fetchGetFn} = require("../utils/requests");
-const {userSettings: {getUserSettings}} = require("./user_settings")
+const {initUserSettings, getUserSettings, refetchUserSettings} = require("./user_settings")
+
 const {Notification} = require("electron");
 const {trackScreenTime} = require("../utils/screen_time");
 const log = require("electron-log");

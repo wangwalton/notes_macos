@@ -15,22 +15,26 @@ if (!app.isPackaged) {
 }
 
 const path = require("node:path");
-const Store = require("electron-store");
 const {
     LOCAL_BACKEND_URL,
     START_PYTHON_SERVER_OVERRIDE,
-    START_LOCAL_HTML_OVERRIDE, FRONTEND_URL, ALLOW_SCREEN_TIME, ALLOW_FILE_SAVE, ALLOW_KEYBOARD_LISTENER
+    START_LOCAL_HTML_OVERRIDE, FRONTEND_URL, ALLOW_SCREEN_TIME, ALLOW_FILE_SAVE, ALLOW_KEYBOARD_LISTENER,
+    REMOTE_BACKEND_URL, LANDING_PAGE_URL
 } = require("./settings");
 const fs = require("fs");
 const activeWindow = require("active-win");
 const {systemPreferences} = require("electron");
-const {updateTrayIconDuration} = require("./tray");
+const {
+    updateTrayIconDuration,
+    buildTrayMenu,
+    startCheckingWorkSessionMinutesLeft,
+    endCheckingWorkSessionMinutesLeft
+} = require("./tray");
 const {getNumFiles, watchAllDirectories} = require("../utils/filesystem");
-const {userSettings: {initUserSettings, getUserSettings, refetchUserSettings}} = require("./user_settings")
+const {initUserSettings, getUserSettings, refetchUserSettings} = require("./user_settings")
 
 const {
-    startPythonSubprocess,
-    pollUntilPythonServerIsUp, isPythonServerUp,
+    pollUntilPythonServerIsUp, isPythonServerUp, startPythonServer, killPythonServer,
 } = require("../utils/python_server");
 const {startPythonTrigger} = require("../utils/python_trigger");
 const {notify, notifier} = require("./notif");
@@ -38,7 +42,12 @@ const {trackScreenTime} = require("../utils/screen_time");
 const {autoUpdater} = require("electron-updater");
 const {keyboardListener} = require("../keyboard/keyboard");
 var kill = require('tree-kill');
+const {verifySignature} = require("electron-updater/out/windowsExecutableCodeSignatureVerifier");
+const {verify} = require("../utils/verify_signature");
+const {fetchPostFn} = require("../utils/requests");
+const {updatePlan, startCheckingSubscription, endCheckingSubscription} = require("./subscription");
 
+startPythonServer()
 
 if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
 
@@ -76,12 +85,10 @@ if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
 log.info("starting app");
 log.errorHandler.startCatching();
 
-const app_name = "immersed";
+const app_name = app.isPackaged ? "joystickai" : "joystickai-dev"
 const JWT_TOKEN = app.isPackaged ? "jwtToken" : "devJwtToken";
 
-const store = new Store();
 
-log.info("haha")
 const createWindow = () => {
     const win = new BrowserWindow({
         webPreferences: {
@@ -92,7 +99,6 @@ const createWindow = () => {
         width: 800 * 2,
         height: 1500,
     });
-    buildTray(!!store.get(JWT_TOKEN));
 
     if (process.defaultApp) {
         if (process.argv.length >= 2) {
@@ -187,90 +193,117 @@ const setupIpc = () => {
     });
 };
 
+let win = null;
 
-let pythonPID = null;
+
 app.whenReady().then(async () => {
-    const win = createWindow();
+    win = createWindow();
+    win.webContents.on('did-start-loading', () => {
+        win.setTitle("Joystick Console" + ' * Loading ....');
+        win.setProgressBar(2, {mode: 'indeterminate'}) // second parameter optional
+    });
+
+    win.webContents.on('did-stop-loading', () => {
+        win.setTitle("Joystick Console");
+        win.setProgressBar(-1);
+    });
+
+    const hasAccess = await hasInitialPrivacyPermission() && await hasInitialScreenCapturePermission()
+    log.info(`hasAccess=${hasAccess}`)
+    loadContent(win, hasAccess);
     if (!app.isPackaged) {
         log.info("opendevtools")
         win.webContents.openDevTools();
     }
 
-
-    // loadLoadingScreen(win);
-
-    setupIpc();
-    // If server is already running, we'll use that one.
-    // if (START_PYTHON_SERVER_OVERRIDE || app.isPackaged) {
-    pythonPID = await startPythonSubprocess(
-        app.getPath("userData") + "/python_server.sqlite3",
-        app.getPath("logs") + "/python_server.log",
-        app.isPackaged
-    );
     await pollUntilPythonServerIsUp();
 
-    log.info("successfully started python subprocess, pid=" + pythonPID.pid);
-    // }
+    setupIpc();
     await initUserSettings();
-    const hasAccess = await hasInitialPrivacyPermission() && await hasInitialScreenCapturePermission()
-    log.info(`hasAccess=${hasAccess}`)
-    loadContent(win, hasAccess);
+    buildTrayMenu()
+
     if (hasAccess && ALLOW_SCREEN_TIME) {
         trackScreenTime.start()
     }
     const userSettings = getUserSettings()?.settings.file_watcher_settings
-    log.info("userSettings", {userSettings})
+    // log.info("userSettings", {userSettings})``
 
     if (ALLOW_FILE_SAVE) watchAllDirectories(userSettings || [])
-    setInterval(() => updateTrayIconDuration(app, tray), 1000 * 10);
+    startCheckingWorkSessionMinutesLeft(10 * 1000)
     startPythonTrigger();
+    startCheckingSubscription(2 * 24 * 60 * 60 * 1000)
     // if (ALLOW_KEYBOARD_LISTENER) {
     //     keyboardListener.start()
     // }
 });
 
 app.on('window-all-closed', () => {
+    log.info('window-all-closed')
     app.quit()
 })
 
-app.on("quit", async () => {
-    if (pythonPID) {
-        log.info("killing python server", pythonPID.pid);
-        log.info("awaiting killing process tree")
-        const pythonKiller = killProcessTree(pythonPID.pid)
-        await pythonKiller;
-        log.info("killed")
 
+let isQuitting = false;
+app.on('before-quit', async (event) => {
+    log.info('before-quit')
+    if (!isQuitting) {
+        isQuitting = true
+        event.preventDefault()
+        killPythonServer()
+        endCheckingWorkSessionMinutesLeft();
+        endCheckingSubscription();
+        // log.info("killing keyboard listener server");
+        // keyboardListener.stop()
+        app.quit()
     }
-    log.info("killing keyboard listener server");
-    keyboardListener.stop()
+})
+
+app.on("quit", async () => {
+    log.info('quit')
 });
 
-const killProcessTree = pid => new Promise((resolve, reject) => {
-    kill(pid, 'SIGKILL', (err) => {
-        if (err) {
-            reject(err);
-        } else {
-            resolve();
-        }
-    });
-});
+
 // Open app from Chrome
-app.on("open-url", (event, url) => {
+app.on("open-url", async (event, url) => {
     log.info("opening app from chrome, url=", url);
     const params = new URL(url);
-    const jwtToken = params.searchParams.get("token");
-    fetch(`${LOCAL_BACKEND_URL}/user_setting/delta_update`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            cloud_user_token: jwtToken,
-        }),
-    }).then(async (res) => {
-        log.info(await res.text());
-    });
+
+    if (params.hostname === "verify_license") {
+        const token = params.searchParams.get("token")
+        const body = Buffer.from(token, 'base64').toString("utf-8")
+        const {payload, encrypted, subscription_id} = JSON.parse(body)
+        const payloadStr = JSON.stringify(payload)
+        const verified = verify(payloadStr, encrypted)
+
+        const oldPlan = getUserSettings().plan
+        if (payload.plan !== oldPlan) {
+            updatePlan({plan: payload.plan, subscription_id})
+            win.reload()
+            dialog.showMessageBox(win, {
+                type: "info",
+                // buttons: ["OK"],
+                title: "Welcome",
+                message: "Welcome to Joystick Pro!"
+            });
+        }
+        log.info(`verified=${verified}`)
+
+    } else {
+        const jwtToken = params.searchParams.get("token");
+
+        fetch(`${LOCAL_BACKEND_URL}/user_setting/delta_update`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                cloud_user_token: jwtToken,
+            }),
+        }).then(async (res) => {
+            log.info(await res.text());
+        });
+    }
+
 });
 
 const openChromeSignIn = () => {
@@ -280,19 +313,8 @@ const openChromeSignIn = () => {
 
 let tray = null;
 
-function buildTray(isSignedIn) {
-    if (tray == null) {
-        const assetsPath = app.isPackaged
-            ? path.join(process.resourcesPath, "assets")
-            : "assets";
 
-        tray = new Tray(`${assetsPath}/tray_icon.png`);
-        // tray.setTitle("Immersed");
-    }
-
-    const contextMenu = Menu.buildFromTemplate([]);
-    tray.setContextMenu(contextMenu);
+// app.disableHardwareAcceleration();
+if (app.isPackaged) {
+    app.setLoginItemSettings({openAtLogin: true})
 }
-
-app.disableHardwareAcceleration();
-app.setLoginItemSettings({openAtLogin: true})

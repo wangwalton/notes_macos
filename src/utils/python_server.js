@@ -1,14 +1,9 @@
 const log = require("electron-log");
-const {LOCAL_BACKEND_URL, LOCAL_BACKEND_PORT} = require("../main/settings");
+const {LOCAL_BACKEND_URL, LOCAL_BACKEND_PORT, START_PYTHON_SERVER_OVERRIDE} = require("../main/settings");
 const {app} = require("electron");
 const path = require("node:path");
 const {exec} = require('child_process');
-
-const log_ = log.create({logId: "pythonServer"});
-log_.transports.file.resolvePathFn = () => path.join(app.getPath('logs'), 'python.log');
-if (!app.isPackaged) {
-    log_.transports.file.level = false;
-}
+const kill = require("tree-kill");
 
 // Function to execute a shell command and return a promise
 const execPromise = (cmd) => new Promise((resolve, reject) => {
@@ -28,10 +23,10 @@ const execPromise = (cmd) => new Promise((resolve, reject) => {
 // Main function to find and kill processes
 const killProcessesOnPort = async (port) => {
     try {
-        log_.info("Looking for processes on port " + port + " to kill...");
+        log.info("Looking for processes on port " + port + " to kill...");
         const findProcessCmd = `lsof -i tcp:${port} | awk 'NR!=1 {print $2}' | uniq`;
         const pids = await execPromise(findProcessCmd);
-        log_.info(`Found following processes on port ${port}: ${pids}`);
+        log.info(`Found following processes on port ${port}: ${pids}`);
 
         const killPromises = pids.split('\n').map(pid => {
             if (!pid || isNaN(pid)) return Promise.resolve();
@@ -41,45 +36,85 @@ const killProcessesOnPort = async (port) => {
 
         await Promise.all(killPromises);
 
-        log_.info('All processes have been killed.');
+        log.info('All processes have been killed.');
     } catch (err) {
-        log_.error(`Error: ${err}`);
+        log.error(`Error: ${err}`);
     }
 };
+let pythonPID = null;
 
+const startPythonServer = async () => {
+    if (START_PYTHON_SERVER_OVERRIDE || app.isPackaged) {
+        let dbPath = app.getPath("userData") + "/python_server.sqlite3";
+        let logPath = app.getPath("logs") + "/python_server.log";
+
+        if (!app.isPackaged) {
+            logPath = app.getPath("userData") + "/python_server.dev.log"
+        }
+        pythonPID = await startPythonSubprocess(
+            dbPath,
+            logPath,
+            app.isPackaged
+        );
+        // await pollUntilPythonServerIsUp();
+        log.info("successfully started python subprocess, pid=" + pythonPID.pid);
+    }
+}
+
+const killProcessTree = pid => new Promise((resolve, reject) => {
+    kill(pid, 'SIGKILL', (err) => {
+        if (err) {
+            reject(err);
+        } else {
+            resolve();
+        }
+    });
+});
+
+const killPythonServer = async () => {
+    if (pythonPID) {
+        log.info("killing python server", pythonPID.pid);
+        log.info("awaiting killing process tree")
+        const pythonKiller = await killProcessTree(pythonPID.pid)
+        log.info("killed")
+    }
+}
 const startPythonSubprocess = async (db_path, log_path, isPackaged) => {
     await killProcessesOnPort(LOCAL_BACKEND_PORT)
     const script = isPackaged
         ? path.join(process.resourcesPath, `./pythonBackend/app`)
         : `./pythonBackend/app`;
     const args = ["--dbpath", db_path, "--logpath", log_path]
-    log_.log("starting python subprocess, args=" + JSON.stringify(args));
+    log.log("starting python subprocess, args=" + JSON.stringify(args));
     const child = require("child_process").execFile(script, ["--dbpath", db_path, "--logpath", log_path]);
 
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", function (data) {
-        log_.log(data + "\r");
+        log.log(data + "\r");
     });
 
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", function (data) {
-        log_.log(data + "\r");
+        log.log(data + "\r");
     });
 
     return child;
 };
 
 const pollUntilPythonServerIsUp = async () => {
-    const tries = [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
-    for (const seconds of tries) {
-        log_.log(
-            "trying to connect to python server, waiting for " + seconds + " seconds"
-        );
-        await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
-        if (await isPythonServerUp()) {
-            log_.log("python server is up");
-            return;
+    if (START_PYTHON_SERVER_OVERRIDE || app.isPackaged) {
+        const tries = [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2];
+        for (const seconds of tries) {
+            log.log(
+                "trying to connect to python server, waiting for " + seconds + " seconds"
+            );
+            await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+            if (await isPythonServerUp()) {
+                log.log("python server is up");
+                return;
+            }
         }
+        throw Error("Python server is not up...")
     }
 };
 const isPythonServerUp = async () => {
@@ -91,5 +126,5 @@ const isPythonServerUp = async () => {
     }
 };
 
-module.exports = {startPythonSubprocess, pollUntilPythonServerIsUp, isPythonServerUp};
+module.exports = {startPythonServer, pollUntilPythonServerIsUp, isPythonServerUp, killPythonServer};
 // startPythonSubprocess();

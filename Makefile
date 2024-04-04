@@ -9,8 +9,14 @@ frontendTarget:
 pack: frontendTarget backendTarget
 	echo "pack"
 	yarn pak
-	open dist
+
+
+copyAndLaunchApp: pack
+	osascript -e 'tell application "Productivity" to quit'
+	rm -rf /Applications/Productivity.app
+	mv ./dist/mac/Productivity.app /Applications/Productivity.app
+
 
 # release:  backend frontend
 # 	git stash && npm version patch && git stash pop
-# 	npm run release
+# 	npm run releaseo

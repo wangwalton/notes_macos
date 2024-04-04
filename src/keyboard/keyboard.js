@@ -1,5 +1,4 @@
 const {fetchPostFn} = require("../utils/requests");
-const {GlobalKeyboardListener} = require("node-global-key-listener");
 const log = require("electron-log");
 
 const keyboardListener = (freezeDuration = 3 * 1000, uploadIntervalSeconds = 10 * 1000) => {

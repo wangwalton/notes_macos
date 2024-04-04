@@ -1,5 +1,6 @@
 const log = require("electron-log");
 const {LOCAL_BACKEND_URL} = require("./settings");
+const {fetchPostFn} = require("../utils/requests");
 
 const IS_CLOUD = "IS_CLOUD";
 const USE_BUNDLED_FRONTEND = "USE_BUNDLED_FRONTEND";
@@ -43,8 +44,12 @@ const _getUserSettings = async () => {
     }
 };
 
+const {initUserSettings, getUserSettings, refetchUserSettings} = userSettings()
+
 module.exports = {
-    userSettings: userSettings(),
+    initUserSettings,
+    getUserSettings,
+    refetchUserSettings,
     constants: {
         IS_CLOUD,
         USE_BUNDLED_FRONTEND,
