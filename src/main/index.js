@@ -64,7 +64,7 @@ if (app.isPackaged && (process.env.AUTO_UPDATE || true)) {
     }
     updateHandler()
 
-    setInterval(updateHandler, 5 * 60 * 1000)
+    setInterval(updateHandler, 10 * 60 * 1000)
 
     autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
         const dialogOpts = {

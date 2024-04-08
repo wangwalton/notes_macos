@@ -103,7 +103,7 @@ const startPythonSubprocess = async (db_path, log_path, isPackaged) => {
 
 const pollUntilPythonServerIsUp = async () => {
     if (START_PYTHON_SERVER_OVERRIDE || app.isPackaged) {
-        const tries = [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2];
+        const tries = [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2];
         for (const seconds of tries) {
             log.log(
                 "trying to connect to python server, waiting for " + seconds + " seconds"
