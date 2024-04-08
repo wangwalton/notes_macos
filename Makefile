@@ -17,4 +17,4 @@ copyAndLaunchApp: pack
 	mv ./dist/mac/Joystick.app /Applications/Joystick.app
 
 release: backendTarget frontendTarget
-    yarn release
+	yarn release
