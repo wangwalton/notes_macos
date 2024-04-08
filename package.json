@@ -1,6 +1,6 @@
 {
-  "name": "notes_macos",
-  "version": "1.0.28",
+  "name": "joystickai",
+  "version": "1.2.1",
   "main": "./src/main/index.js",
   "license": "MIT",
   "dependencies": {
@@ -24,8 +24,8 @@
     "release": "electron-builder --mac --x64 --publish always"
   },
   "build": {
-    "appId": "com.joystickai.Notes",
-    "productName": "Productivity",
+    "appId": "com.joystickai.Joystick",
+    "productName": "Joystick",
     "artifactName": "${productName}.${ext}",
     "electronLanguages": "en",
     "publish": [
@@ -43,6 +43,7 @@
     "npmRebuild": "false",
     "mac": {
       "electronLanguages": "en",
+      "icon": "assets/icon.icns",
       "target": [
         "zip",
         "dmg"
@@ -52,8 +53,8 @@
       ],
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
       "extendInfo": {
         "NSAppleEventsUsageDescription": "Please allow access to script browser applications to detect the current URL when triggering instant lookup."
       }

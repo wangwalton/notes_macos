@@ -85,7 +85,7 @@ const startPythonSubprocess = async (db_path, log_path, isPackaged) => {
         ? path.join(process.resourcesPath, `./pythonBackend/app`)
         : `./pythonBackend/app`;
     const args = ["--dbpath", db_path, "--logpath", log_path]
-    log.log("starting python subprocess, args=" + JSON.stringify(args));
+    log.log("starting python subprocess, full command=" + script + " " + args.join(" "));
     const child = require("child_process").execFile(script, ["--dbpath", db_path, "--logpath", log_path]);
 
     child.stdout.setEncoding("utf8");

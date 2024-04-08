@@ -34,6 +34,9 @@ const wrapper = (notificationCooloff = 3 * 60 * 1000) => {
 
     const checkAndNotify = () => {
         const screenTime = trackScreenTime.getLastAvailable()
+        if (!screenTime) {
+            return;
+        }
         const appName = screenTime.app_name;
         // log.info("No active work sessions and found appName=", appName, "getWorkingApps=", getWorkingApps())
         if (getWorkingApps().includes(appName)) {

@@ -12,9 +12,9 @@ pack: frontendTarget backendTarget
 
 
 copyAndLaunchApp: pack
-	osascript -e 'tell application "Productivity" to quit'
-	rm -rf /Applications/Productivity.app
-	mv ./dist/mac/Productivity.app /Applications/Productivity.app
+	osascript -e 'tell application "Joystick" to quit'
+	rm -rf /Applications/Joystick.app
+	mv ./dist/mac/Joystick.app /Applications/Joystick.app
 
 
 # release:  backend frontend

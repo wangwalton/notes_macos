@@ -198,6 +198,8 @@ let win = null;
 
 app.whenReady().then(async () => {
     win = createWindow();
+    setupIpc();
+
     win.webContents.on('did-start-loading', () => {
         win.setTitle("Joystick Console" + ' * Loading ....');
         win.setProgressBar(2, {mode: 'indeterminate'}) // second parameter optional
@@ -218,7 +220,6 @@ app.whenReady().then(async () => {
 
     await pollUntilPythonServerIsUp();
 
-    setupIpc();
     await initUserSettings();
     buildTrayMenu()
 
